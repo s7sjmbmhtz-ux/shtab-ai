@@ -57,3 +57,8 @@ class ToolRegistry:
         for tool in ALL_TOOLS:
             if not self.has(tool.id):
                 self.register(tool)
+                # ============================================================
+# ГЛОБАЛЬНЫЙ ЭКЗЕМПЛЯР РЕЕСТРА
+# ============================================================
+
+tool_registry = ToolRegistry()

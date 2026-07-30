@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 from enum import Enum
 from dataclasses import dataclass, field
@@ -214,14 +215,17 @@ class Validator(Protocol):
 
 @dataclass(slots=True)
 class ToolDefinition:
+    # ===== ОБЯЗАТЕЛЬНЫЕ ПОЛЯ (БЕЗ DEFAULT) =====
     id: str
     name: str
     icon: str
     description: str
     category: Category
-    version: str = "1.0"
     workflow: Workflow
     prompt_builder_id: str
+    
+    # ===== ПОЛЯ С DEFAULT =====
+    version: str = "1.0"
     daily_limit: int = 3
     section: str = ""
     history_tool: str = ""

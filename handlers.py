@@ -3,8 +3,8 @@
 """
 
 import json
-from aiogram import Router, types
-from aiogram.filters import Command, Text, StateFilter
+from aiogram import Router, types, F
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -134,7 +134,7 @@ async def start_handler(message: types.Message, state: FSMContext):
     logger.info(f"Пользователь {message.from_user.id} выполнил /start")
 
 
-@router.message(Text("Главное меню"))
+@router.message(F.text == "Главное меню")
 async def back_to_main_menu(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer("👋 Вы вернулись в главное меню", reply_markup=get_main_menu())
@@ -142,7 +142,7 @@ async def back_to_main_menu(message: types.Message, state: FSMContext):
 
 # ==================== ПРОДАЖИ ====================
 
-@router.message(Text("🏢 Продажи"))
+@router.message(F.text == "🏢 Продажи")
 async def enter_sales(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(SalesStates.menu)
@@ -153,7 +153,7 @@ async def enter_sales(message: types.Message, state: FSMContext):
     )
 
 
-@router.message(Text("📞 Скрипт продаж"))
+@router.message(F.text == "📞 Скрипт продаж")
 async def start_script(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(SalesStates.script_product)
@@ -267,14 +267,14 @@ async def cancel_script(message: types.Message, state: FSMContext):
     await message.answer("❌ Отменено.", reply_markup=get_sales_menu_keyboard())
 
 
-@router.callback_query(lambda c: c.data == "sales_new_script")
+@router.callback_query(F.data == "sales_new_script")
 async def sales_new(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await start_script(callback.message, state)
     await callback.answer()
 
 
-@router.callback_query(lambda c: c.data == "sales_main_menu")
+@router.callback_query(F.data == "sales_main_menu")
 async def sales_menu(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await state.clear()
@@ -289,7 +289,7 @@ async def sales_menu(callback: types.CallbackQuery, state: FSMContext):
 
 # ==================== МАРКЕТИНГ ====================
 
-@router.message(Text("📈 Маркетинг"))
+@router.message(F.text == "📈 Маркетинг")
 async def enter_marketing(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(MarketingStates.menu)
@@ -300,7 +300,7 @@ async def enter_marketing(message: types.Message, state: FSMContext):
     )
 
 
-@router.message(Text("📝 Продающий пост"))
+@router.message(F.text == "📝 Продающий пост")
 async def start_post(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(MarketingStates.post_product)
@@ -405,14 +405,14 @@ async def cancel_post(message: types.Message, state: FSMContext):
     await message.answer("❌ Отменено.", reply_markup=get_marketing_menu_keyboard())
 
 
-@router.callback_query(lambda c: c.data == "marketing_new_post")
+@router.callback_query(F.data == "marketing_new_post")
 async def marketing_new(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await start_post(callback.message, state)
     await callback.answer()
 
 
-@router.callback_query(lambda c: c.data == "marketing_main_menu")
+@router.callback_query(F.data == "marketing_main_menu")
 async def marketing_menu(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await state.clear()
@@ -425,7 +425,7 @@ async def marketing_menu(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-@router.callback_query(lambda c: c.data == "marketing_share_post")
+@router.callback_query(F.data == "marketing_share_post")
 async def share_post(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
     response = data.get("last_response", "")
@@ -438,7 +438,7 @@ async def share_post(callback: types.CallbackQuery, state: FSMContext):
 
 # ==================== ИЗОБРАЖЕНИЯ ====================
 
-@router.message(Text("🖼 Изображения"))
+@router.message(F.text == "🖼 Изображения")
 async def enter_image(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(ImageStates.description)
@@ -532,14 +532,14 @@ async def cancel_image(message: types.Message, state: FSMContext):
     await message.answer("❌ Отменено.", reply_markup=get_main_menu())
 
 
-@router.callback_query(lambda c: c.data == "image_new")
+@router.callback_query(F.data == "image_new")
 async def image_new(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await enter_image(callback.message, state)
     await callback.answer()
 
 
-@router.callback_query(lambda c: c.data == "image_menu")
+@router.callback_query(F.data == "image_menu")
 async def image_menu(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await state.clear()
@@ -549,7 +549,7 @@ async def image_menu(callback: types.CallbackQuery, state: FSMContext):
 
 # ==================== AI АССИСТЕНТ ====================
 
-@router.message(Text("🤖 AI Ассистент"))
+@router.message(F.text == "🤖 AI Ассистент")
 async def enter_assistant(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(AssistantStates.waiting_question)
@@ -618,7 +618,7 @@ async def cancel_assistant(message: types.Message, state: FSMContext):
 
 # ==================== МАРКЕТПЛЕЙС ====================
 
-@router.message(Text("🛒 Маркетплейсы"))
+@router.message(F.text == "🛒 Маркетплейсы")
 async def enter_marketplace(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(MarketplaceStates.platform)
@@ -732,7 +732,7 @@ async def cancel_marketplace(message: types.Message, state: FSMContext):
 
 # ==================== КАБИНЕТ ====================
 
-@router.message(Text("👤 Кабинет"))
+@router.message(F.text == "👤 Кабинет")
 async def user_cabinet(message: types.Message, state: FSMContext):
     await state.clear()
 
@@ -781,7 +781,7 @@ async def user_cabinet(message: types.Message, state: FSMContext):
 
 # ==================== ТАРИФЫ ====================
 
-@router.message(Text("💎 Тарифы"))
+@router.message(F.text == "💎 Тарифы")
 async def show_tariffs(message: types.Message, state: FSMContext):
     await state.clear()
 
@@ -802,7 +802,7 @@ async def show_tariffs(message: types.Message, state: FSMContext):
     )
 
 
-@router.callback_query(lambda c: c.data.startswith("tariff_"))
+@router.callback_query(F.data.startswith("tariff_"))
 async def tariff_selected(callback: types.CallbackQuery, state: FSMContext):
     tariff_id = callback.data.split("_")[1]
     tariff = get_tariff(tariff_id)
@@ -865,7 +865,7 @@ async def admin_panel(message: types.Message):
 
 # ==================== ОБЩИЙ НАЗАД ====================
 
-@router.message(Text("⬅️ Назад"))
+@router.message(F.text == "⬅️ Назад")
 async def back_to_main(message: types.Message, state: FSMContext):
     current = await state.get_state()
 

@@ -6,10 +6,6 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-# ============================================================
-# RESPONSE TYPE
-# ============================================================
-
 class ResponseType(str, Enum):
     TEXT = "text"
     IMAGE = "image"
@@ -17,10 +13,6 @@ class ResponseType(str, Enum):
     VIDEO = "video"
     FILE = "file"
 
-
-# ============================================================
-# GENERATION STATUS
-# ============================================================
 
 class GenerationStatus(str, Enum):
     SUCCESS = "success"
@@ -30,10 +22,6 @@ class GenerationStatus(str, Enum):
     EMPTY_RESPONSE = "empty_response"
     NOT_IMPLEMENTED = "not_implemented"
 
-
-# ============================================================
-# CATEGORY
-# ============================================================
 
 class Category(str, Enum):
     SALES = "sales"
@@ -45,10 +33,6 @@ class Category(str, Enum):
     ASSISTANT = "assistant"
 
 
-# ============================================================
-# FEATURE
-# ============================================================
-
 class Feature(str, Enum):
     REFINE = "refine"
     COPY = "copy"
@@ -59,26 +43,15 @@ class Feature(str, Enum):
     STREAM = "stream"
 
 
-# ============================================================
-# BASE PROMPT BUILDER
-# ============================================================
-
 class BasePromptBuilder:
-    """Базовый класс для построителей промптов"""
     NAME: Optional[str] = None
-
     def build(self, context) -> str:
         raise NotImplementedError
-
     def get_id(self) -> str:
         if self.NAME is None:
             raise ValueError(f"{self.__class__.__name__} должен определить NAME")
         return self.NAME
 
-
-# ============================================================
-# PROMPT MODE
-# ============================================================
 
 class PromptMode(str, Enum):
     INITIAL = "initial"
@@ -86,10 +59,6 @@ class PromptMode(str, Enum):
     REFINE = "refine"
     RETRY = "retry"
 
-
-# ============================================================
-# PROMPT CONTEXT
-# ============================================================
 
 @dataclass(slots=True)
 class PromptContext:
@@ -115,20 +84,12 @@ class PromptContext:
         )
 
 
-# ============================================================
-# TARIFF
-# ============================================================
-
 class Tariff(str, Enum):
     FREE = "free"
     LITE = "lite"
     PRO = "pro"
     BUSINESS = "business"
 
-
-# ============================================================
-# SALES
-# ============================================================
 
 class SalesScriptData(BaseModel):
     product: str
@@ -138,20 +99,12 @@ class SalesScriptData(BaseModel):
     objections: str
 
 
-# ============================================================
-# MARKETING
-# ============================================================
-
 class MarketingPostData(BaseModel):
     product: str
     audience: str
     platform: str
     style: str
 
-
-# ============================================================
-# IMAGES
-# ============================================================
 
 class ImageGenerationData(BaseModel):
     description: str
@@ -178,10 +131,6 @@ class ImageResponse(BaseModel):
     image: ImageInfo
     metadata: ImageMetadata
 
-
-# ============================================================
-# EDITOR
-# ============================================================
 
 class TextOperation(str, Enum):
     IMPROVE = "improve"
@@ -210,10 +159,6 @@ class TextEditorData(BaseModel):
     operation: TextOperation
     language: Optional[str] = None
 
-
-# ============================================================
-# MARKETPLACE
-# ============================================================
 
 class MarketplaceType(str, Enum):
     WILDBERRIES = "wildberries"
@@ -266,10 +211,6 @@ class MarketplaceDesignTZData(BaseModel):
     marketplace: MarketplaceType
 
 
-# ============================================================
-# AI RESPONSE
-# ============================================================
-
 class AIResponse(BaseModel):
     content: str
     title: Optional[str] = None
@@ -282,10 +223,6 @@ class AIResponse(BaseModel):
     response_type: ResponseType = ResponseType.TEXT
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
-
-# ============================================================
-# CONDITION
-# ============================================================
 
 class ConditionOperator(str, Enum):
     EQUALS = "equals"
@@ -385,10 +322,6 @@ class Workflow:
         return False
 
 
-# ============================================================
-# VALIDATION
-# ============================================================
-
 @dataclass(slots=True)
 class ValidationResult:
     ok: bool
@@ -404,13 +337,8 @@ class Validator(Protocol):
         ...
 
 
-# ============================================================
-# TOOL DEFINITION
-# ============================================================
-
 @dataclass(slots=True)
 class ToolDefinition:
-    # ===== ОБЯЗАТЕЛЬНЫЕ ПОЛЯ (БЕЗ DEFAULT) =====
     id: str
     name: str
     icon: str
@@ -418,8 +346,6 @@ class ToolDefinition:
     category: Category
     workflow: Workflow
     prompt_builder_id: str
-    
-    # ===== ПОЛЯ С DEFAULT =====
     version: str = "1.0"
     daily_limit: int = 3
     section: str = ""
@@ -445,10 +371,6 @@ class ToolDefinition:
             self.history_tool = self.id
 
 
-# ============================================================
-# SESSION
-# ============================================================
-
 class AISession(BaseModel):
     tool_id: str
     current_step: str = ""
@@ -457,10 +379,6 @@ class AISession(BaseModel):
     prompt: Optional[str] = None
     completed: bool = False
 
-
-# ============================================================
-# PIPELINE RESULT
-# ============================================================
 
 @dataclass(slots=True)
 class PipelineResult:
@@ -477,10 +395,6 @@ class PipelineResult:
     history_id: Optional[int] = None
 
 
-# ============================================================
-# SUBSCRIPTION
-# ============================================================
-
 class Subscription(BaseModel):
     id: Optional[int] = None
     user_id: int
@@ -489,10 +403,6 @@ class Subscription(BaseModel):
     end_date: Optional[datetime] = None
     status: str = "active"
 
-
-# ============================================================
-# PAYMENT
-# ============================================================
 
 class PaymentProvider(str, Enum):
     YOOKASSA = "yookassa"

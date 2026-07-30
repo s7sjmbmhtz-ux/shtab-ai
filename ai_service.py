@@ -1,6 +1,7 @@
 import httpx
 import asyncio
 import json
+import base64
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 from abc import ABC, abstractmethod
@@ -159,7 +160,6 @@ class ImageProvider(AIProvider):
             result = await self._make_request(prompt, size, model)
             elapsed = asyncio.get_event_loop().time() - start_time
 
-            # Логируем ответ для отладки
             logger.info(f"Image API ответ: {result}")
 
             if not result:
@@ -174,27 +174,24 @@ class ImageProvider(AIProvider):
             # Пробуем разные форматы ответа
             image_url = None
             
-            # Формат 1: data[0].url (OpenAI)
             if result.get("data") and isinstance(result["data"], list):
-    # Если есть url — берём его
-    image_url = result["data"][0].get("url")
-    # Если нет url, но есть base64 — сохраняем как изображение
-    if not image_url and result["data"][0].get("b64_json"):
-        import base64
-        image_data = base64.b64decode(result["data"][0]["b64_json"])
-        # Сохраняем во временный файл или передаём как bytes
-        # Пока сохраняем как строку-заглушку
-        image_url = "data:image/png;base64," + result["data"][0]["b64_json"]
+                # Формат 1: url (OpenAI)
+                image_url = result["data"][0].get("url")
+                
+                # Формат 2: b64_json (Provod.ai)
+                if not image_url and result["data"][0].get("b64_json"):
+                    b64_data = result["data"][0]["b64_json"]
+                    image_url = f"data:image/png;base64,{b64_data}"
             
-            # Формат 2: url (прямой)
+            # Формат 3: url (прямой)
             if not image_url and result.get("url"):
                 image_url = result["url"]
             
-            # Формат 3: images[0].url
+            # Формат 4: images[0].url
             if not image_url and result.get("images"):
                 image_url = result["images"][0].get("url")
             
-            # Формат 4: output (Replicate)
+            # Формат 5: output (Replicate)
             if not image_url and result.get("output"):
                 if isinstance(result["output"], list) and len(result["output"]) > 0:
                     image_url = result["output"][0]

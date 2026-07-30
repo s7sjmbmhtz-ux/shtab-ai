@@ -3,7 +3,7 @@ import logging
 import base64
 import tempfile
 import os
-from aiogram.types import Message, FSInputFile
+from aiogram.types import Message, BufferedInputFile
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 
 from models import PipelineResult, ResponseType
@@ -72,20 +72,18 @@ class TelegramResponseAdapter:
                     
                     image_data = base64.b64decode(encoded)
                     
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                        tmp.write(image_data)
-                        tmp_path = tmp.name
+                    # Отправляем напрямую как байты с помощью BufferedInputFile
+                    photo = BufferedInputFile(
+                        file=image_data,
+                        filename="image.png"
+                    )
                     
-                    # Используем FSInputFile вместо open()
-                    photo = FSInputFile(tmp_path)
                     await message.answer_photo(
                         photo=photo,
                         caption=f"{success_text}\n\n<i>⏱ {result.elapsed:.2f} сек</i>",
                         reply_markup=keyboard,
                         parse_mode=parse_mode
                     )
-                    
-                    os.unlink(tmp_path)
                     return True
                     
                 except Exception as e:

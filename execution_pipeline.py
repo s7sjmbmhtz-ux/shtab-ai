@@ -68,9 +68,10 @@ class ExecutionPipeline:
         return ValidationResult(ok=True)
 
     def _build_prompt(self, tool: ToolDefinition, data: Dict[str, Any]) -> str:
-        builder = self.prompt_registry.get(tool.prompt_builder_id)
-        if builder:
+        builder_class = self.prompt_registry.get(tool.prompt_builder_id)
+        if builder_class:
             from models import PromptContext, PromptMode
+            builder = builder_class()  # <-- СОЗДАЁМ ЭКЗЕМПЛЯР!
             context = PromptContext(mode=PromptMode.INITIAL, data=data)
             return builder.build(context)
         return f"Обработай данные: {data}"
@@ -98,7 +99,7 @@ class ExecutionPipeline:
         # ============================================================
         # ПОЛУЧАЕМ МОДЕЛЬ ПО ТАРИФУ
         # ============================================================
-        from services import get_user_tariff
+        from services.subscription_service import get_user_tariff
         tariff = await get_user_tariff(user_id)
         model = get_model_for_tariff(tariff, tool.response_type)
 
@@ -145,7 +146,7 @@ class ExecutionPipeline:
         # ============================================================
         # СПИСАНИЕ ЛИМИТА (атомарно)
         # ============================================================
-        from services import check_and_consume_limit
+        from services.usage_service import check_and_consume_limit
         allowed, used, remaining = await check_and_consume_limit(
             user_id, tool.response_type, limit
         )

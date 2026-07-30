@@ -47,7 +47,9 @@ class TextProvider(AIProvider):
         }
         payload = {
             "model": model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
             "temperature": temperature
         }
 
@@ -58,7 +60,13 @@ class TextProvider(AIProvider):
         )
         response.raise_for_status()
         data = response.json()
-        return data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        
+        # Проверяем структуру ответа Provod.ai
+        if "choices" in data and len(data["choices"]) > 0:
+            return data["choices"][0].get("message", {}).get("content", "")
+        else:
+            # Альтернативный путь для Provod.ai
+            return data.get("result", data.get("response", str(data)))
 
     async def generate(self, prompt: str, **kwargs) -> AIResponse:
         model = kwargs.get("model", self.default_model)
@@ -84,6 +92,16 @@ class TextProvider(AIProvider):
                 model=model,
                 elapsed=elapsed,
                 status=GenerationStatus.SUCCESS,
+                response_type=ResponseType.TEXT
+            )
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP ошибка Provod.ai: {e.response.status_code} - {e.response.text}")
+            return AIResponse(
+                content="",
+                provider="deepseek",
+                model=model,
+                status=GenerationStatus.ERROR,
+                metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"},
                 response_type=ResponseType.TEXT
             )
         except Exception as e:
@@ -170,6 +188,16 @@ class ImageProvider(AIProvider):
                 metadata=response_data
             )
 
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP ошибка Image API: {e.response.status_code} - {e.response.text}")
+            return AIResponse(
+                content="",
+                provider="image_generator",
+                model=model,
+                status=GenerationStatus.ERROR,
+                response_type=ResponseType.IMAGE,
+                metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
+            )
         except Exception as e:
             logger.error(f"Ошибка генерации изображения: {e}")
             return AIResponse(

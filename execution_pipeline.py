@@ -8,7 +8,8 @@ from models import (
 )
 from database import limit_repository, request_repository, db_manager
 from tools import prompt_registry
-from services import track_usage, get_user_limit, get_user_usage_today
+from services.usage_service import track_usage, get_user_usage_today
+from services.subscription_service import get_user_limit
 from model_router import get_model_for_tariff
 from tariffs import get_tariff
 

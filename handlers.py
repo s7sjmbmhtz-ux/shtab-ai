@@ -244,7 +244,10 @@ async def generate_script(message: types.Message, state: FSMContext):
             mode="initial"
         )
 
-        await loading.delete()
+        try:
+            await loading.delete()
+        except Exception:
+            pass
 
         if await send_pipeline_result(
             message,
@@ -256,7 +259,10 @@ async def generate_script(message: types.Message, state: FSMContext):
             await state.set_state(SalesStates.script_result)
 
     except Exception as e:
-        await loading.delete()
+        try:
+            await loading.delete()
+        except Exception:
+            pass
         logger.error(f"Ошибка: {e}")
         await message.answer("❌ Ошибка. Попробуйте позже.")
 
@@ -382,7 +388,10 @@ async def generate_post(message: types.Message, state: FSMContext):
             mode="initial"
         )
 
-        await loading.delete()
+        try:
+            await loading.delete()
+        except Exception:
+            pass
 
         if await send_pipeline_result(
             message,
@@ -394,7 +403,10 @@ async def generate_post(message: types.Message, state: FSMContext):
             await state.set_state(MarketingStates.post_result)
 
     except Exception as e:
-        await loading.delete()
+        try:
+            await loading.delete()
+        except Exception:
+            pass
         logger.error(f"Ошибка: {e}")
         await message.answer("❌ Ошибка. Попробуйте позже.")
 
@@ -595,7 +607,10 @@ async def generate_assistant(message: types.Message, state: FSMContext):
             mode="initial"
         )
 
-        await loading.delete()
+        try:
+            await loading.delete()
+        except Exception:
+            pass
 
         await send_pipeline_result(
             message,
@@ -606,7 +621,10 @@ async def generate_assistant(message: types.Message, state: FSMContext):
         )
 
     except Exception as e:
-        await loading.delete()
+        try:
+            await loading.delete()
+        except Exception:
+            pass
         logger.error(f"Ошибка AI Assistant: {e}")
         await message.answer("❌ Произошла ошибка. Попробуйте позже.")
 
@@ -709,7 +727,10 @@ async def generate_marketplace(message: types.Message, state: FSMContext):
             mode="initial"
         )
 
-        await loading.delete()
+        try:
+            await loading.delete()
+        except Exception:
+            pass
 
         await send_pipeline_result(
             message,
@@ -720,7 +741,10 @@ async def generate_marketplace(message: types.Message, state: FSMContext):
         )
 
     except Exception as e:
-        await loading.delete()
+        try:
+            await loading.delete()
+        except Exception:
+            pass
         logger.error(f"Ошибка Marketplace: {e}")
         await message.answer("❌ Ошибка. Попробуйте позже.")
 

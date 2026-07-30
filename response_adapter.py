@@ -3,7 +3,7 @@ import logging
 import base64
 import tempfile
 import os
-from aiogram.types import Message
+from aiogram.types import Message, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 
 from models import PipelineResult, ResponseType
@@ -58,35 +58,32 @@ class TelegramResponseAdapter:
                 await message.answer("❌ URL изображения не получен", parse_mode=parse_mode)
                 return False
 
-            # Если это data URL с base64 — сохраняем во временный файл
+            # Если это data URL с base64
             if image_url.startswith("data:image"):
                 try:
-                    # Извлекаем base64 данные (убираем префикс)
                     if "," in image_url:
                         _, encoded = image_url.split(",", 1)
                     else:
                         encoded = image_url
                     
-                    # Декодируем base64 (добавляем паддинг если нужно)
                     missing_padding = len(encoded) % 4
                     if missing_padding:
                         encoded += "=" * (4 - missing_padding)
                     
                     image_data = base64.b64decode(encoded)
                     
-                    # Сохраняем во временный файл
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                         tmp.write(image_data)
                         tmp_path = tmp.name
                     
-                    # Отправляем как файл
-                    with open(tmp_path, "rb") as f:
-                        await message.answer_photo(
-                            photo=f,
-                            caption=f"{success_text}\n\n<i>⏱ {result.elapsed:.2f} сек</i>",
-                            reply_markup=keyboard,
-                            parse_mode=parse_mode
-                        )
+                    # Используем FSInputFile вместо open()
+                    photo = FSInputFile(tmp_path)
+                    await message.answer_photo(
+                        photo=photo,
+                        caption=f"{success_text}\n\n<i>⏱ {result.elapsed:.2f} сек</i>",
+                        reply_markup=keyboard,
+                        parse_mode=parse_mode
+                    )
                     
                     os.unlink(tmp_path)
                     return True

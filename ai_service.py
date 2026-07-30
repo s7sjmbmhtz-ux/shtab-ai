@@ -176,7 +176,15 @@ class ImageProvider(AIProvider):
             
             # Формат 1: data[0].url (OpenAI)
             if result.get("data") and isinstance(result["data"], list):
-                image_url = result["data"][0].get("url")
+    # Если есть url — берём его
+    image_url = result["data"][0].get("url")
+    # Если нет url, но есть base64 — сохраняем как изображение
+    if not image_url and result["data"][0].get("b64_json"):
+        import base64
+        image_data = base64.b64decode(result["data"][0]["b64_json"])
+        # Сохраняем во временный файл или передаём как bytes
+        # Пока сохраняем как строку-заглушку
+        image_url = "data:image/png;base64," + result["data"][0]["b64_json"]
             
             # Формат 2: url (прямой)
             if not image_url and result.get("url"):

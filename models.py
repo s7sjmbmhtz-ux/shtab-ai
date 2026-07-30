@@ -452,3 +452,18 @@ class Payment(BaseModel):
     status: str = "pending"
     payment_id: Optional[str] = None
     created_at: datetime
+# ============================================================
+# BASE PROMPT BUILDER
+# ============================================================
+
+class BasePromptBuilder:
+    """Базовый класс для построителей промптов"""
+    NAME: Optional[str] = None
+
+    def build(self, context) -> str:
+        raise NotImplementedError
+
+    def get_id(self) -> str:
+        if self.NAME is None:
+            raise ValueError(f"{self.__class__.__name__} должен определить NAME")
+        return self.NAME

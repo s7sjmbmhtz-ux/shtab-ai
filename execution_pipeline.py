@@ -12,6 +12,7 @@ from services.usage_service import track_usage, get_user_usage_today
 from services.subscription_service import get_user_limit
 from model_router import get_model_for_tariff
 from tariffs import get_tariff
+from admin import is_admin
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ class ExecutionPipeline:
         builder_class = self.prompt_registry.get(tool.prompt_builder_id)
         if builder_class:
             from models import PromptContext, PromptMode
-            builder = builder_class()  # <-- СОЗДАЁМ ЭКЗЕМПЛЯР!
+            builder = builder_class()
             context = PromptContext(mode=PromptMode.INITIAL, data=data)
             return builder.build(context)
         return f"Обработай данные: {data}"
@@ -110,18 +111,21 @@ class ExecutionPipeline:
         }
 
         # ============================================================
-        # ПРОВЕРКА ЛИМИТА
+        # ПРОВЕРКА ЛИМИТА (ПРОПУСК ДЛЯ АДМИНА)
         # ============================================================
-        limit = await get_user_limit(user_id, tool.response_type)
-        today_used = await get_user_usage_today(user_id, tool.response_type)
+        if not is_admin(user_id):
+            limit = await get_user_limit(user_id, tool.response_type)
+            today_used = await get_user_usage_today(user_id, tool.response_type)
 
-        if today_used >= limit:
-            return PipelineResult(
-                success=False,
-                error=f"Лимит тарифа закончился. Лимит: {limit} в день. Выберите тариф выше.",
-                status=GenerationStatus.RATE_LIMIT,
-                elapsed=0
-            )
+            if today_used >= limit:
+                return PipelineResult(
+                    success=False,
+                    error=f"Лимит тарифа закончился. Лимит: {limit} в день. Выберите тариф выше.",
+                    status=GenerationStatus.RATE_LIMIT,
+                    elapsed=0
+                )
+        else:
+            logger.info(f"Админ {user_id} — лимиты отключены")
 
         # ============================================================
         # ГЕНЕРАЦИЯ
@@ -148,7 +152,7 @@ class ExecutionPipeline:
         # ============================================================
         from services.usage_service import check_and_consume_limit
         allowed, used, remaining = await check_and_consume_limit(
-            user_id, tool.response_type, limit
+            user_id, tool.response_type, limit if not is_admin(user_id) else 999999
         )
 
         if not allowed:

@@ -168,3 +168,10 @@ class DatabaseConnectionManager:
             await self._pool.close()
             self._pool = None
             logger.info("Соединение с БД закрыто")
+# ============================================================
+# РЕПОЗИТОРИИ (ЭКЗЕМПЛЯРЫ)
+# ============================================================
+
+user_repository = UserRepository()
+request_repository = RequestRepository()
+limit_repository = LimitRepository()

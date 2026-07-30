@@ -418,3 +418,43 @@ class Payment(BaseModel):
     status: str = "pending"
     payment_id: Optional[str] = None
     created_at: datetime
+# ============================================================
+# AUDIO FILE
+# ============================================================
+
+class AudioFile(BaseModel):
+    """Модель аудиофайла для обработки"""
+    filename: str
+    extension: str
+    duration: int
+    size: int
+    content: bytes
+    mime_type: Optional[str] = None
+
+    @property
+    def size_mb(self) -> float:
+        return self.size / (1024 * 1024)
+
+    @property
+    def duration_minutes(self) -> float:
+        return self.duration / 60
+
+    @property
+    def extension_without_dot(self) -> str:
+        return self.extension.lstrip(".")
+
+    @property
+    def mime_type_auto(self) -> str:
+        if self.mime_type:
+            return self.mime_type
+        mime_map = {
+            ".ogg": "audio/ogg",
+            ".mp3": "audio/mpeg",
+            ".m4a": "audio/mp4",
+            ".wav": "audio/wav",
+            ".flac": "audio/flac",
+            ".aac": "audio/aac",
+            ".opus": "audio/opus",
+            ".webm": "audio/webm",
+        }
+        return mime_map.get(self.extension, "application/octet-stream")

@@ -6,6 +6,10 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+# ============================================================
+# RESPONSE TYPE
+# ============================================================
+
 class ResponseType(str, Enum):
     TEXT = "text"
     IMAGE = "image"
@@ -13,6 +17,10 @@ class ResponseType(str, Enum):
     VIDEO = "video"
     FILE = "file"
 
+
+# ============================================================
+# GENERATION STATUS
+# ============================================================
 
 class GenerationStatus(str, Enum):
     SUCCESS = "success"
@@ -22,6 +30,10 @@ class GenerationStatus(str, Enum):
     EMPTY_RESPONSE = "empty_response"
     NOT_IMPLEMENTED = "not_implemented"
 
+
+# ============================================================
+# CATEGORY
+# ============================================================
 
 class Category(str, Enum):
     SALES = "sales"
@@ -33,6 +45,10 @@ class Category(str, Enum):
     ASSISTANT = "assistant"
 
 
+# ============================================================
+# FEATURE
+# ============================================================
+
 class Feature(str, Enum):
     REFINE = "refine"
     COPY = "copy"
@@ -43,15 +59,26 @@ class Feature(str, Enum):
     STREAM = "stream"
 
 
+# ============================================================
+# BASE PROMPT BUILDER
+# ============================================================
+
 class BasePromptBuilder:
+    """Базовый класс для построителей промптов"""
     NAME: Optional[str] = None
+
     def build(self, context) -> str:
         raise NotImplementedError
+
     def get_id(self) -> str:
         if self.NAME is None:
             raise ValueError(f"{self.__class__.__name__} должен определить NAME")
         return self.NAME
 
+
+# ============================================================
+# PROMPT MODE
+# ============================================================
 
 class PromptMode(str, Enum):
     INITIAL = "initial"
@@ -59,6 +86,10 @@ class PromptMode(str, Enum):
     REFINE = "refine"
     RETRY = "retry"
 
+
+# ============================================================
+# PROMPT CONTEXT
+# ============================================================
 
 @dataclass(slots=True)
 class PromptContext:
@@ -84,12 +115,20 @@ class PromptContext:
         )
 
 
+# ============================================================
+# TARIFF
+# ============================================================
+
 class Tariff(str, Enum):
     FREE = "free"
     LITE = "lite"
     PRO = "pro"
     BUSINESS = "business"
 
+
+# ============================================================
+# SALES
+# ============================================================
 
 class SalesScriptData(BaseModel):
     product: str
@@ -99,12 +138,20 @@ class SalesScriptData(BaseModel):
     objections: str
 
 
+# ============================================================
+# MARKETING
+# ============================================================
+
 class MarketingPostData(BaseModel):
     product: str
     audience: str
     platform: str
     style: str
 
+
+# ============================================================
+# IMAGES
+# ============================================================
 
 class ImageGenerationData(BaseModel):
     description: str
@@ -131,6 +178,52 @@ class ImageResponse(BaseModel):
     image: ImageInfo
     metadata: ImageMetadata
 
+
+# ============================================================
+# AUDIO FILE
+# ============================================================
+
+class AudioFile(BaseModel):
+    """Модель аудиофайла для обработки"""
+    filename: str
+    extension: str
+    duration: int
+    size: int
+    content: bytes
+    mime_type: Optional[str] = None
+
+    @property
+    def size_mb(self) -> float:
+        return self.size / (1024 * 1024)
+
+    @property
+    def duration_minutes(self) -> float:
+        return self.duration / 60
+
+    @property
+    def extension_without_dot(self) -> str:
+        return self.extension.lstrip(".")
+
+    @property
+    def mime_type_auto(self) -> str:
+        if self.mime_type:
+            return self.mime_type
+        mime_map = {
+            ".ogg": "audio/ogg",
+            ".mp3": "audio/mpeg",
+            ".m4a": "audio/mp4",
+            ".wav": "audio/wav",
+            ".flac": "audio/flac",
+            ".aac": "audio/aac",
+            ".opus": "audio/opus",
+            ".webm": "audio/webm",
+        }
+        return mime_map.get(self.extension, "application/octet-stream")
+
+
+# ============================================================
+# EDITOR
+# ============================================================
 
 class TextOperation(str, Enum):
     IMPROVE = "improve"
@@ -160,6 +253,10 @@ class TextEditorData(BaseModel):
     language: Optional[str] = None
 
 
+# ============================================================
+# MARKETPLACE
+# ============================================================
+
 class MarketplaceType(str, Enum):
     WILDBERRIES = "wildberries"
     OZON = "ozon"
@@ -178,6 +275,16 @@ class MarketplaceTool(str, Enum):
     QUESTIONS = "questions"
     RICH = "rich"
     ORDER_CARD = "order_card"
+
+
+class MarketplaceTaskType(str, Enum):
+    PRODUCT_CARD = "product_card"
+    DESCRIPTION = "description"
+    TITLE_OPTIMIZATION = "title_optimization"
+    SEO = "seo"
+    REVIEW_REPLY = "review_reply"
+    COMPETITOR_ANALYSIS = "competitor_analysis"
+    GENERAL = "general"
 
 
 class MarketplaceSession(BaseModel):
@@ -211,6 +318,10 @@ class MarketplaceDesignTZData(BaseModel):
     marketplace: MarketplaceType
 
 
+# ============================================================
+# AI RESPONSE
+# ============================================================
+
 class AIResponse(BaseModel):
     content: str
     title: Optional[str] = None
@@ -223,6 +334,10 @@ class AIResponse(BaseModel):
     response_type: ResponseType = ResponseType.TEXT
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
+
+# ============================================================
+# CONDITION
+# ============================================================
 
 class ConditionOperator(str, Enum):
     EQUALS = "equals"
@@ -322,6 +437,10 @@ class Workflow:
         return False
 
 
+# ============================================================
+# VALIDATION
+# ============================================================
+
 @dataclass(slots=True)
 class ValidationResult:
     ok: bool
@@ -337,8 +456,13 @@ class Validator(Protocol):
         ...
 
 
+# ============================================================
+# TOOL DEFINITION
+# ============================================================
+
 @dataclass(slots=True)
 class ToolDefinition:
+    # ===== ОБЯЗАТЕЛЬНЫЕ ПОЛЯ (БЕЗ DEFAULT) =====
     id: str
     name: str
     icon: str
@@ -346,6 +470,8 @@ class ToolDefinition:
     category: Category
     workflow: Workflow
     prompt_builder_id: str
+    
+    # ===== ПОЛЯ С DEFAULT =====
     version: str = "1.0"
     daily_limit: int = 3
     section: str = ""
@@ -371,6 +497,10 @@ class ToolDefinition:
             self.history_tool = self.id
 
 
+# ============================================================
+# SESSION
+# ============================================================
+
 class AISession(BaseModel):
     tool_id: str
     current_step: str = ""
@@ -379,6 +509,10 @@ class AISession(BaseModel):
     prompt: Optional[str] = None
     completed: bool = False
 
+
+# ============================================================
+# PIPELINE RESULT
+# ============================================================
 
 @dataclass(slots=True)
 class PipelineResult:
@@ -395,69 +529,6 @@ class PipelineResult:
     history_id: Optional[int] = None
 
 
-class Subscription(BaseModel):
-    id: Optional[int] = None
-    user_id: int
-    tariff: Tariff
-    start_date: datetime
-    end_date: Optional[datetime] = None
-    status: str = "active"
-
-
-class PaymentProvider(str, Enum):
-    YOOKASSA = "yookassa"
-    TELEGRAM_STARS = "telegram_stars"
-
-
-class Payment(BaseModel):
-    id: Optional[int] = None
-    user_id: int
-    provider: PaymentProvider
-    amount: float
-    currency: str = "RUB"
-    status: str = "pending"
-    payment_id: Optional[str] = None
-    created_at: datetime
-# ============================================================
-# AUDIO FILE
-# ============================================================
-
-class AudioFile(BaseModel):
-    """Модель аудиофайла для обработки"""
-    filename: str
-    extension: str
-    duration: int
-    size: int
-    content: bytes
-    mime_type: Optional[str] = None
-
-    @property
-    def size_mb(self) -> float:
-        return self.size / (1024 * 1024)
-
-    @property
-    def duration_minutes(self) -> float:
-        return self.duration / 60
-
-    @property
-    def extension_without_dot(self) -> str:
-        return self.extension.lstrip(".")
-
-    @property
-    def mime_type_auto(self) -> str:
-        if self.mime_type:
-            return self.mime_type
-        mime_map = {
-            ".ogg": "audio/ogg",
-            ".mp3": "audio/mpeg",
-            ".m4a": "audio/mp4",
-            ".wav": "audio/wav",
-            ".flac": "audio/flac",
-            ".aac": "audio/aac",
-            ".opus": "audio/opus",
-            ".webm": "audio/webm",
-        }
-        return mime_map.get(self.extension, "application/octet-stream")
 # ============================================================
 # DATABASE MODELS
 # ============================================================
@@ -490,3 +561,36 @@ class RequestRecord(BaseModel):
     error_message: Optional[str] = None
     saved: bool = False
     created_at: Optional[datetime] = None
+
+
+# ============================================================
+# SUBSCRIPTION
+# ============================================================
+
+class Subscription(BaseModel):
+    id: Optional[int] = None
+    user_id: int
+    tariff: Tariff
+    start_date: datetime
+    end_date: Optional[datetime] = None
+    status: str = "active"
+
+
+# ============================================================
+# PAYMENT
+# ============================================================
+
+class PaymentProvider(str, Enum):
+    YOOKASSA = "yookassa"
+    TELEGRAM_STARS = "telegram_stars"
+
+
+class Payment(BaseModel):
+    id: Optional[int] = None
+    user_id: int
+    provider: PaymentProvider
+    amount: float
+    currency: str = "RUB"
+    status: str = "pending"
+    payment_id: Optional[str] = None
+    created_at: datetime

@@ -14,7 +14,8 @@ from models import (
     GenerationStatus, ResponseType, TextOperation, TextEditorData, EditorSession,
     Tariff
 )
-from tools import ToolNames, prompt_registry, PromptContext, PromptMode
+from tools import prompt_registry, PromptContext, PromptMode
+from tool_ids import ToolNames
 from ai_service import ai_service
 from database import user_repository, request_repository, limit_repository
 from keyboards import (

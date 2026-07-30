@@ -458,3 +458,35 @@ class AudioFile(BaseModel):
             ".webm": "audio/webm",
         }
         return mime_map.get(self.extension, "application/octet-stream")
+# ============================================================
+# DATABASE MODELS
+# ============================================================
+
+class User(BaseModel):
+    id: Optional[int] = None
+    telegram_id: int
+    username: Optional[str] = None
+    first_name: Optional[str] = None
+    tariff: str = "free"
+    is_admin: bool = False
+    created_at: Optional[datetime] = None
+    last_activity: Optional[datetime] = None
+
+
+class RequestRecord(BaseModel):
+    id: Optional[int] = None
+    user_id: int
+    section: str
+    tool: str
+    input_data: Dict[str, Any]
+    prompt: str
+    response: Optional[str] = None
+    response_type: ResponseType = ResponseType.TEXT
+    schema_version: int = 1
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    elapsed: Optional[float] = None
+    status: GenerationStatus = GenerationStatus.SUCCESS
+    error_message: Optional[str] = None
+    saved: bool = False
+    created_at: Optional[datetime] = None

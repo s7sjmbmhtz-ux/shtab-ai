@@ -60,6 +60,62 @@ class Feature(str, Enum):
 
 
 # ============================================================
+# BASE PROMPT BUILDER
+# ============================================================
+
+class BasePromptBuilder:
+    """Базовый класс для построителей промптов"""
+    NAME: Optional[str] = None
+
+    def build(self, context) -> str:
+        raise NotImplementedError
+
+    def get_id(self) -> str:
+        if self.NAME is None:
+            raise ValueError(f"{self.__class__.__name__} должен определить NAME")
+        return self.NAME
+
+
+# ============================================================
+# PROMPT MODE
+# ============================================================
+
+class PromptMode(str, Enum):
+    INITIAL = "initial"
+    CONTINUE = "continue"
+    REFINE = "refine"
+    RETRY = "retry"
+
+
+# ============================================================
+# PROMPT CONTEXT
+# ============================================================
+
+@dataclass(slots=True)
+class PromptContext:
+    mode: PromptMode
+    data: Dict[str, Any]
+    original_response: Optional[str] = None
+    original_prompt: Optional[str] = None
+    user_request: Optional[str] = None
+    conversation: List[Any] = field(default_factory=list)
+
+    @classmethod
+    def initial(cls, data: Dict[str, Any]) -> "PromptContext":
+        return cls(mode=PromptMode.INITIAL, data=data)
+
+    @classmethod
+    def refine(cls, data: Dict[str, Any], original_prompt: str, original_response: str, user_request: str) -> "PromptContext":
+        return cls(
+            mode=PromptMode.REFINE,
+            data=data,
+            original_prompt=original_prompt,
+            original_response=original_response,
+            user_request=user_request
+        )
+
+
+# ============================================================
 # TARIFF
 # ============================================================
 
@@ -452,18 +508,3 @@ class Payment(BaseModel):
     status: str = "pending"
     payment_id: Optional[str] = None
     created_at: datetime
-# ============================================================
-# BASE PROMPT BUILDER
-# ============================================================
-
-class BasePromptBuilder:
-    """Базовый класс для построителей промптов"""
-    NAME: Optional[str] = None
-
-    def build(self, context) -> str:
-        raise NotImplementedError
-
-    def get_id(self) -> str:
-        if self.NAME is None:
-            raise ValueError(f"{self.__class__.__name__} должен определить NAME")
-        return self.NAME

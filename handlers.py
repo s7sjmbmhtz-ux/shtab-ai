@@ -37,10 +37,10 @@ from tool_runner import execute_tool
 from response_helpers import send_pipeline_result
 from tool_ids import ToolNames as ToolIds
 from admin import is_admin
-from services import (
-    get_user_tariff, set_user_tariff, get_user_limit,
-    get_user_usage_today, get_subscription_end_date,
-    track_usage
+from services.subscription_service import (
+    get_user_tariff, set_user_tariff, get_user_limit, get_subscription_end_date
+)
+from services.usage_service import get_user_usage_today, track_usage
 )
 from tariffs import get_tariff, get_all_tariffs
 

@@ -3,7 +3,8 @@ from typing import Optional, Dict, Any
 
 from models import PipelineResult, AISession
 from tool_registry import tool_registry
-from ai_service import ExecutionPipeline, ai_service
+from ai_service import ai_service
+from execution_pipeline import ExecutionPipeline
 from database import limit_repository, request_repository
 from tools import prompt_registry
 

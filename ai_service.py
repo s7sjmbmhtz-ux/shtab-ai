@@ -61,11 +61,10 @@ class TextProvider(AIProvider):
         response.raise_for_status()
         data = response.json()
         
-        # Проверяем структуру ответа Provod.ai
+        # Provod.ai использует формат OpenAI
         if "choices" in data and len(data["choices"]) > 0:
             return data["choices"][0].get("message", {}).get("content", "")
         else:
-            # Альтернативный путь для Provod.ai
             return data.get("result", data.get("response", str(data)))
 
     async def generate(self, prompt: str, **kwargs) -> AIResponse:
@@ -160,7 +159,10 @@ class ImageProvider(AIProvider):
             result = await self._make_request(prompt, size, model)
             elapsed = asyncio.get_event_loop().time() - start_time
 
-            if not result or not result.get("data"):
+            # Логируем ответ для отладки
+            logger.info(f"Image API ответ: {result}")
+
+            if not result:
                 return AIResponse(
                     content="",
                     provider="image_generator",
@@ -169,7 +171,38 @@ class ImageProvider(AIProvider):
                     response_type=ResponseType.IMAGE
                 )
 
-            image_url = result.get("data", [{}])[0].get("url", "")
+            # Пробуем разные форматы ответа
+            image_url = None
+            
+            # Формат 1: data[0].url (OpenAI)
+            if result.get("data") and isinstance(result["data"], list):
+                image_url = result["data"][0].get("url")
+            
+            # Формат 2: url (прямой)
+            if not image_url and result.get("url"):
+                image_url = result["url"]
+            
+            # Формат 3: images[0].url
+            if not image_url and result.get("images"):
+                image_url = result["images"][0].get("url")
+            
+            # Формат 4: output (Replicate)
+            if not image_url and result.get("output"):
+                if isinstance(result["output"], list) and len(result["output"]) > 0:
+                    image_url = result["output"][0]
+                elif isinstance(result["output"], str):
+                    image_url = result["output"]
+
+            if not image_url:
+                logger.error(f"Не удалось найти URL в ответе: {result}")
+                return AIResponse(
+                    content="",
+                    provider="image_generator",
+                    model=model,
+                    status=GenerationStatus.EMPTY_RESPONSE,
+                    response_type=ResponseType.IMAGE,
+                    metadata={"error": "URL изображения не найден", "raw_response": str(result)[:500]}
+                )
 
             response_data = {
                 "type": "image",
@@ -208,6 +241,52 @@ class ImageProvider(AIProvider):
                 response_type=ResponseType.IMAGE,
                 metadata={"error": str(e)}
             )
+
+
+# ============================================================
+# AUDIO PROVIDER
+# ============================================================
+
+class AudioProvider(AIProvider):
+    def __init__(self, client: httpx.AsyncClient):
+        self.client = client
+        self.stt_provider = settings.stt_provider or "speech_to_text"
+        self.default_model = settings.default_stt_model
+
+    async def _make_request(self, audio: AudioFile, language: str, model: str) -> Dict[str, Any]:
+        # TODO: Реализовать реальный STT API
+        raise NotImplementedError("Распознавание голоса пока не реализовано")
+
+    def _build_response(self, result: Dict[str, Any], audio: AudioFile, language: str, model: Optional[str], elapsed: float) -> AIResponse:
+        model_name = model or self.default_model
+
+        return AIResponse(
+            content=result.get("text", ""),
+            provider=self.stt_provider,
+            model=result.get("model", model_name),
+            elapsed=elapsed,
+            status=GenerationStatus.SUCCESS,
+            response_type=ResponseType.TEXT,
+            metadata={
+                "language": result.get("language", language),
+                "duration": audio.duration,
+                "filename": audio.filename,
+                "extension": audio.extension,
+                "size_mb": round(audio.size_mb, 2),
+                "provider": self.stt_provider
+            }
+        )
+
+    async def generate(self, prompt: str = "", **kwargs) -> AIResponse:
+        # Заглушка
+        return AIResponse(
+            content="",
+            provider=self.stt_provider,
+            model=self.default_model,
+            status=GenerationStatus.NOT_IMPLEMENTED,
+            response_type=ResponseType.TEXT,
+            metadata={"error": "Voice генерация пока не реализована"}
+        )
 
 
 # ============================================================

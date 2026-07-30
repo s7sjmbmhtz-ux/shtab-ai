@@ -1,5 +1,8 @@
 import json
 import logging
+import base64
+import tempfile
+import os
 from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 
@@ -50,10 +53,32 @@ class TelegramResponseAdapter:
         try:
             data = json.loads(result.content)
             image_url = data.get("url")
+            
             if not image_url:
                 await message.answer("❌ URL изображения не получен", parse_mode=parse_mode)
                 return False
 
+            # Если это data URL с base64 — сохраняем во временный файл
+            if image_url.startswith("data:image"):
+                header, encoded = image_url.split(",", 1)
+                image_data = base64.b64decode(encoded)
+                
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                    tmp.write(image_data)
+                    tmp_path = tmp.name
+                
+                with open(tmp_path, "rb") as f:
+                    await message.answer_photo(
+                        photo=f,
+                        caption=f"{success_text}\n\n<i>⏱ {result.elapsed:.2f} сек</i>",
+                        reply_markup=keyboard,
+                        parse_mode=parse_mode
+                    )
+                
+                os.unlink(tmp_path)
+                return True
+            
+            # Обычный URL
             await message.answer_photo(
                 photo=image_url,
                 caption=f"{success_text}\n\n<i>⏱ {result.elapsed:.2f} сек</i>",
@@ -61,6 +86,7 @@ class TelegramResponseAdapter:
                 parse_mode=parse_mode
             )
             return True
+            
         except json.JSONDecodeError as e:
             logger.error(f"Ошибка парсинга JSON для Image: {e}")
             await message.answer("❌ Ошибка формата ответа", parse_mode=parse_mode)

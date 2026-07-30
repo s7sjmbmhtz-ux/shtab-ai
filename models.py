@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 from enum import Enum
 from dataclasses import dataclass, field
@@ -69,6 +68,146 @@ class Tariff(str, Enum):
     LITE = "lite"
     PRO = "pro"
     BUSINESS = "business"
+
+
+# ============================================================
+# SALES
+# ============================================================
+
+class SalesScriptData(BaseModel):
+    product: str
+    client: str
+    average_check: str
+    communication_format: str
+    objections: str
+
+
+# ============================================================
+# MARKETING
+# ============================================================
+
+class MarketingPostData(BaseModel):
+    product: str
+    audience: str
+    platform: str
+    style: str
+
+
+# ============================================================
+# IMAGES
+# ============================================================
+
+class ImageGenerationData(BaseModel):
+    description: str
+    purpose: str
+    style: str
+    size: str
+    size_label: Optional[str] = None
+    aspect_ratio: Optional[str] = None
+
+
+class ImageInfo(BaseModel):
+    url: Optional[str] = None
+    size: str
+    model: Optional[str] = None
+
+
+class ImageMetadata(BaseModel):
+    generated: bool = True
+    created_at: datetime
+
+
+class ImageResponse(BaseModel):
+    version: int = 1
+    image: ImageInfo
+    metadata: ImageMetadata
+
+
+# ============================================================
+# EDITOR
+# ============================================================
+
+class TextOperation(str, Enum):
+    IMPROVE = "improve"
+    SUMMARY = "summary"
+    SHORT_SUMMARY = "short_summary"
+    FIX = "fix"
+    REWRITE = "rewrite"
+    SHORTEN = "shorten"
+    EXPAND = "expand"
+    BULLETS = "bullets"
+    TRANSLATE = "translate"
+
+
+class EditorSession(BaseModel):
+    source: str
+    text: str
+    operation: Optional[TextOperation] = None
+    language: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    output: Optional[str] = None
+    prompt: Optional[str] = None
+
+
+class TextEditorData(BaseModel):
+    text: str
+    operation: TextOperation
+    language: Optional[str] = None
+
+
+# ============================================================
+# MARKETPLACE
+# ============================================================
+
+class MarketplaceType(str, Enum):
+    WILDBERRIES = "wildberries"
+    OZON = "ozon"
+    YANDEX = "yandex"
+    MEGAMARKET = "megamarket"
+    KASPI = "kaspi"
+    OTHER = "other"
+
+
+class MarketplaceTool(str, Enum):
+    CARD = "card"
+    DESIGN_TZ = "design_tz"
+    SEO = "seo"
+    ANALYZE = "analyze"
+    REVIEWS = "reviews"
+    QUESTIONS = "questions"
+    RICH = "rich"
+    ORDER_CARD = "order_card"
+
+
+class MarketplaceSession(BaseModel):
+    source: str
+    marketplace: Optional[MarketplaceType] = None
+    product_name: Optional[str] = None
+    product_specs: Optional[str] = None
+    product_advantages: Optional[str] = None
+    target_audience: Optional[str] = None
+    features: Optional[str] = None
+    text: Optional[str] = None
+    tool: Optional[MarketplaceTool] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    result: Optional[str] = None
+    prompt: Optional[str] = None
+
+
+class MarketplaceCardData(BaseModel):
+    product_name: str
+    specs: str
+    advantages: str
+    audience: str
+    features: str
+    marketplace: MarketplaceType
+
+
+class MarketplaceDesignTZData(BaseModel):
+    product_name: str
+    specs: str
+    advantages: str
+    marketplace: MarketplaceType
 
 
 # ============================================================

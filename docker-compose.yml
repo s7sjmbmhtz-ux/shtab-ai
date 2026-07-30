@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: shtab-ai-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./ai_shtab.db:/app/ai_shtab.db
+      - ./logs:/app/logs

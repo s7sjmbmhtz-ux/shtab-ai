@@ -2,21 +2,6 @@ from prompt_registry import prompt_registry
 from models import PromptContext, PromptMode, BasePromptBuilder
 
 
-# ============================================================
-# BASE PROMPT BUILDER (уже должен быть в models.py)
-# ============================================================
-
-# Если BasePromptBuilder нет в models.py, раскомментируй:
-# class BasePromptBuilder:
-#     NAME: Optional[str] = None
-#     def build(self, context: PromptContext) -> str:
-#         raise NotImplementedError
-
-
-# ============================================================
-# SALES V1 BUILDER
-# ============================================================
-
 class SalesV1PromptBuilder(BasePromptBuilder):
     NAME = "sales_v1"
 
@@ -55,10 +40,6 @@ class SalesV1PromptBuilder(BasePromptBuilder):
 ТЕКСТ:
 """
 
-
-# ============================================================
-# MARKETING V1 BUILDER
-# ============================================================
 
 class MarketingV1PromptBuilder(BasePromptBuilder):
     NAME = "marketing_v1"
@@ -109,10 +90,6 @@ FOLLOW_UP: - Вариант доработки
 ТЕКСТ ПОСТА:
 """
 
-
-# ============================================================
-# IMAGE V1 BUILDER
-# ============================================================
 
 class ImageV1PromptBuilder(BasePromptBuilder):
     NAME = "image_v1"
@@ -183,10 +160,6 @@ class ImageV1PromptBuilder(BasePromptBuilder):
 """
 
 
-# ============================================================
-# ASSISTANT V1 BUILDER
-# ============================================================
-
 class AssistantV1PromptBuilder(BasePromptBuilder):
     NAME = "assistant_v1"
 
@@ -236,10 +209,6 @@ class AssistantV1PromptBuilder(BasePromptBuilder):
 ОТВЕТ:
 """
 
-
-# ============================================================
-# MARKETPLACE V1 BUILDER
-# ============================================================
 
 class MarketplaceV1PromptBuilder(BasePromptBuilder):
     NAME = "marketplace_v1"
@@ -389,10 +358,6 @@ SEO-ОПТИМИЗАЦИЯ:
 РЕЗУЛЬТАТ:
 """
 
-
-# ============================================================
-# РЕГИСТРАЦИЯ
-# ============================================================
 
 prompt_registry.register(SalesV1PromptBuilder.NAME, SalesV1PromptBuilder)
 prompt_registry.register(MarketingV1PromptBuilder.NAME, MarketingV1PromptBuilder)

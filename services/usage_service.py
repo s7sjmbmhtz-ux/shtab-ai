@@ -17,6 +17,22 @@ async def track_usage(
     cost: Optional[float] = None
 ) -> bool:
     """Записывает использование AI."""
+    
+    # Проверяем, существует ли пользователь
+    async with db_manager.connection() as conn:
+        cursor = await conn.execute(
+            "SELECT id FROM users WHERE telegram_id = ?",
+            (user_id,)
+        )
+        user = await cursor.fetchone()
+        if not user:
+            # Если пользователь не найден — создаём
+            await conn.execute(
+                "INSERT OR IGNORE INTO users (telegram_id) VALUES (?)",
+                (user_id,)
+            )
+            await conn.commit()
+    
     async with db_manager.connection() as conn:
         await conn.execute(
             """
@@ -74,7 +90,6 @@ async def check_and_consume_limit(
                 await conn.commit()
                 return False, used, 0
 
-            # Разрешаем использование
             await conn.commit()
             return True, used, limit - used
 

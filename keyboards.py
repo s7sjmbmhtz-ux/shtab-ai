@@ -1,5 +1,6 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from models import TextOperation
 
 
 # ==================== ГЛАВНОЕ МЕНЮ ====================

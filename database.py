@@ -187,7 +187,7 @@ class DatabaseConnectionManager:
             logger.info("Соединение с БД закрыто")
 
 
-db_manager = DatabaseConnectionManager(settings.db_path)
+db_manager = DatabaseConnectionManager(settings.DB_PATH)
 
 
 # ==================== MIGRATIONS ====================

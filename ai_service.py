@@ -199,7 +199,7 @@ class ImageProvider(AIProvider):
 
 
 # ============================================================
-# VIDEO PROVIDER (GenAPI) - НОВЫЙ!
+# VIDEO PROVIDER (GenAPI)
 # ============================================================
 
 class VideoProvider(AIProvider):
@@ -227,11 +227,9 @@ class VideoProvider(AIProvider):
             "n": 1
         }
         
-        # Если есть референс-изображение
         if kwargs.get("image"):
             payload["image"] = kwargs.get("image")
         
-        # Если есть отрицательный промт
         if kwargs.get("negative_prompt"):
             payload["negative_prompt"] = kwargs.get("negative_prompt")
 
@@ -254,8 +252,7 @@ class VideoProvider(AIProvider):
         try:
             start_time = asyncio.get_event_loop().time()
             
-            # Отправляем запрос на генерацию
-            result = await self._make_request(prompt, model, **kwargs)
+            result = await self._make_request(prompt=prompt, model=model, **kwargs)
             elapsed = asyncio.get_event_loop().time() - start_time
 
             logger.info(f"Video API ответ: {result}")
@@ -269,28 +266,23 @@ class VideoProvider(AIProvider):
                     response_type=ResponseType.VIDEO
                 )
 
-            # Пробуем разные форматы ответа
             video_url = None
             
-            # Формат 1: data[0].url
             if result.get("data") and isinstance(result["data"], list) and len(result["data"]) > 0:
                 video_url = result["data"][0].get("url")
                 if not video_url and result["data"][0].get("b64_json"):
                     b64_data = result["data"][0]["b64_json"]
                     video_url = f"data:video/mp4;base64,{b64_data}"
             
-            # Формат 2: output (Replicate и другие)
             if not video_url and result.get("output"):
                 if isinstance(result["output"], list) and len(result["output"]) > 0:
                     video_url = result["output"][0]
                 elif isinstance(result["output"], str):
                     video_url = result["output"]
             
-            # Формат 3: url (прямой)
             if not video_url and result.get("url"):
                 video_url = result["url"]
             
-            # Формат 4: videos[0].url
             if not video_url and result.get("videos"):
                 if isinstance(result["videos"], list) and len(result["videos"]) > 0:
                     video_url = result["videos"][0].get("url")
@@ -380,7 +372,7 @@ class AIService:
         self._providers = {
             "text": TextProvider(self.client),
             "image": ImageProvider(self.client),
-            "video": VideoProvider(self.client),  # ДОБАВЛЕНО!
+            "video": VideoProvider(self.client),
             "audio": AudioProvider(self.client),
         }
 

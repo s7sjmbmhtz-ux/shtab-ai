@@ -359,8 +359,242 @@ SEO-ОПТИМИЗАЦИЯ:
 """
 
 
+# ==================== НОВЫЕ МАРКЕТИНГОВЫЕ ПРОМПТ-БИЛДЕРЫ ====================
+
+class ContentPlanPromptBuilder(BasePromptBuilder):
+    NAME = "content_plan_v1"
+
+    def build(self, context: PromptContext) -> str:
+        data = context.data
+        niche = data.get("niche", "")
+        audience = data.get("audience", "")
+        platform = data.get("platform", "")
+
+        if context.mode == PromptMode.REFINE:
+            return f"""
+Исходный запрос:
+{context.original_prompt}
+Результат, который нужно изменить:
+{context.original_response}
+Пользователь просит:
+{context.user_request}
+Обнови результат.
+"""
+
+        return f"""
+Ты — эксперт по контент-маркетингу. Создай контент-план для бизнеса.
+
+ИНФОРМАЦИЯ:
+- Ниша: {niche}
+- Целевая аудитория: {audience}
+- Платформы: {platform}
+
+ТРЕБОВАНИЯ:
+1. Составь контент-план на 30 дней
+2. Укажи темы постов
+3. Добавь форматы (текст, видео, карусель)
+4. Укажи цели для каждой публикации
+
+Формат ответа:
+---
+ДЕНЬ 1: Тема - Формат - Цель
+ДЕНЬ 2: Тема - Формат - Цель
+...
+---
+"""
+
+
+class OfferPromptBuilder(BasePromptBuilder):
+    NAME = "offer_v1"
+
+    def build(self, context: PromptContext) -> str:
+        data = context.data
+        product = data.get("product", "")
+        benefit = data.get("benefit", "")
+        audience = data.get("audience", "")
+
+        if context.mode == PromptMode.REFINE:
+            return f"""
+Исходный запрос:
+{context.original_prompt}
+Результат, который нужно изменить:
+{context.original_response}
+Пользователь просит:
+{context.user_request}
+Обнови результат.
+"""
+
+        return f"""
+Ты — эксперт по рекламе. Создай продающий оффер для продукта.
+
+ИНФОРМАЦИЯ:
+- Продукт: {product}
+- Главная выгода: {benefit}
+- Целевая аудитория: {audience}
+
+ТРЕБОВАНИЯ:
+1. Заголовок (привлекающий внимание)
+2. Описание проблемы аудитории
+3. Предложение (решение)
+4. Преимущества (3-5 пунктов)
+5. Призыв к действию
+
+Формат ответа:
+---
+ЗАГОЛОВОК: ...
+ПРОБЛЕМА: ...
+РЕШЕНИЕ: ...
+ПРЕИМУЩЕСТВА: ...
+ПРИЗЫВ: ...
+---
+"""
+
+
+class EmailPromptBuilder(BasePromptBuilder):
+    NAME = "email_v1"
+
+    def build(self, context: PromptContext) -> str:
+        data = context.data
+        topic = data.get("topic", "")
+        audience = data.get("audience", "")
+        goal = data.get("goal", "")
+
+        if context.mode == PromptMode.REFINE:
+            return f"""
+Исходный запрос:
+{context.original_prompt}
+Результат, который нужно изменить:
+{context.original_response}
+Пользователь просит:
+{context.user_request}
+Обнови результат.
+"""
+
+        return f"""
+Ты — эксперт по email-маркетингу. Создай письмо для рассылки.
+
+ИНФОРМАЦИЯ:
+- Тема письма: {topic}
+- Получатели: {audience}
+- Цель: {goal}
+
+ТРЕБОВАНИЯ:
+1. Привлекающая тема письма
+2. Персонализированное обращение
+3. Основной текст (продающий/информационный)
+4. Призыв к действию
+5. Подпись
+
+Формат ответа:
+---
+ТЕМА: ...
+ПРИВЕТСТВИЕ: ...
+ОСНОВНОЙ ТЕКСТ: ...
+ПРИЗЫВ: ...
+ПОДПИСЬ: ...
+---
+"""
+
+
+class UTPPromptBuilder(BasePromptBuilder):
+    NAME = "utp_v1"
+
+    def build(self, context: PromptContext) -> str:
+        data = context.data
+        product = data.get("product", "")
+        competitors = data.get("competitors", "")
+        benefit = data.get("benefit", "")
+
+        if context.mode == PromptMode.REFINE:
+            return f"""
+Исходный запрос:
+{context.original_prompt}
+Результат, который нужно изменить:
+{context.original_response}
+Пользователь просит:
+{context.user_request}
+Обнови результат.
+"""
+
+        return f"""
+Ты — эксперт по позиционированию. Создай УТП (уникальное торговое предложение).
+
+ИНФОРМАЦИЯ:
+- Продукт: {product}
+- Конкуренты: {competitors}
+- Главное преимущество: {benefit}
+
+ТРЕБОВАНИЯ:
+1. Сформулируй УТП (одно предложение)
+2. Объясни, чем ты отличаешься от конкурентов
+3. Покажи ценность для клиента
+4. Дай примеры использования
+
+Формат ответа:
+---
+УТП: ...
+ОТЛИЧИЯ: ...
+ЦЕННОСТЬ: ...
+ПРИМЕРЫ: ...
+---
+"""
+
+
+class AudienceAnalysisPromptBuilder(BasePromptBuilder):
+    NAME = "audience_analysis_v1"
+
+    def build(self, context: PromptContext) -> str:
+        data = context.data
+        product = data.get("product", "")
+        details = data.get("details", "")
+
+        if context.mode == PromptMode.REFINE:
+            return f"""
+Исходный запрос:
+{context.original_prompt}
+Результат, который нужно изменить:
+{context.original_response}
+Пользователь просит:
+{context.user_request}
+Обнови результат.
+"""
+
+        return f"""
+Ты — эксперт по маркетингу. Проанализируй целевую аудиторию.
+
+ИНФОРМАЦИЯ:
+- Продукт: {product}
+- Дополнительная информация: {details}
+
+ТРЕБОВАНИЯ:
+1. Кто твои клиенты? (портрет)
+2. Их боли и проблемы
+3. Что они хотят?
+4. Где их найти?
+5. Как с ними общаться?
+
+Формат ответа:
+---
+ПОРТРЕТ: ...
+БОЛИ: ...
+ЖЕЛАНИЯ: ...
+КАНАЛЫ: ...
+СТРАТЕГИЯ: ...
+---
+"""
+
+
+# ==================== РЕГИСТРАЦИЯ ВСЕХ БИЛДЕРОВ ====================
+
 prompt_registry.register(SalesV1PromptBuilder.NAME, SalesV1PromptBuilder)
 prompt_registry.register(MarketingV1PromptBuilder.NAME, MarketingV1PromptBuilder)
 prompt_registry.register(ImageV1PromptBuilder.NAME, ImageV1PromptBuilder)
 prompt_registry.register(AssistantV1PromptBuilder.NAME, AssistantV1PromptBuilder)
 prompt_registry.register(MarketplaceV1PromptBuilder.NAME, MarketplaceV1PromptBuilder)
+
+# Регистрация новых маркетинговых билдеров
+prompt_registry.register(ContentPlanPromptBuilder.NAME, ContentPlanPromptBuilder)
+prompt_registry.register(OfferPromptBuilder.NAME, OfferPromptBuilder)
+prompt_registry.register(EmailPromptBuilder.NAME, EmailPromptBuilder)
+prompt_registry.register(UTPPromptBuilder.NAME, UTPPromptBuilder)
+prompt_registry.register(AudienceAnalysisPromptBuilder.NAME, AudienceAnalysisPromptBuilder)

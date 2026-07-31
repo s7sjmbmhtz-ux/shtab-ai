@@ -40,7 +40,7 @@ def get_sales_menu_keyboard() -> ReplyKeyboardMarkup:
         ],
         [
             KeyboardButton(text="📑 Коммерческое предложение"),
-            KeyboardButton(text="🎯 Работа с возражениями")
+            KeyboardButton(text="🛡️ Работа с возражениями")  # ← исправлено: 🎯 → 🛡️
         ],
         [
             KeyboardButton(text="📊 Анализ переписки"),
@@ -63,7 +63,8 @@ def get_communication_format_keyboard() -> ReplyKeyboardMarkup:
         [
             KeyboardButton(text="💬 Переписка"),
             KeyboardButton(text="🤝 Личная встреча")
-        ]
+        ],
+        [KeyboardButton(text="⬅️ Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -128,7 +129,8 @@ def get_platform_keyboard() -> ReplyKeyboardMarkup:
     buttons = [
         [KeyboardButton(text="📱 Instagram"), KeyboardButton(text="✈️ Telegram")],
         [KeyboardButton(text="📘 VK"), KeyboardButton(text="💼 LinkedIn")],
-        [KeyboardButton(text="🌐 Другое")]
+        [KeyboardButton(text="🌐 Другое")],
+        [KeyboardButton(text="⬅️ Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -140,7 +142,8 @@ def get_platform_keyboard() -> ReplyKeyboardMarkup:
 def get_style_keyboard() -> ReplyKeyboardMarkup:
     buttons = [
         [KeyboardButton(text="🎓 Экспертный"), KeyboardButton(text="🤝 Дружелюбный")],
-        [KeyboardButton(text="🔥 Провокационный"), KeyboardButton(text="💎 Премиум")]
+        [KeyboardButton(text="🔥 Провокационный"), KeyboardButton(text="💎 Премиум")],
+        [KeyboardButton(text="⬅️ Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -197,7 +200,8 @@ def get_images_menu_keyboard() -> ReplyKeyboardMarkup:
 def get_purpose_keyboard() -> ReplyKeyboardMarkup:
     buttons = [
         [KeyboardButton(text="📢 Реклама"), KeyboardButton(text="📱 Соцсети")],
-        [KeyboardButton(text="🌐 Сайт"), KeyboardButton(text="🛒 Маркетплейс")]
+        [KeyboardButton(text="🌐 Сайт"), KeyboardButton(text="🛒 Маркетплейс")],
+        [KeyboardButton(text="⬅️ Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -209,7 +213,8 @@ def get_purpose_keyboard() -> ReplyKeyboardMarkup:
 def get_image_style_keyboard() -> ReplyKeyboardMarkup:
     buttons = [
         [KeyboardButton(text="🎨 Реалистичный"), KeyboardButton(text="✨ Минимализм")],
-        [KeyboardButton(text="🎭 3D"), KeyboardButton(text="🖌 Иллюстрация")]
+        [KeyboardButton(text="🎭 3D"), KeyboardButton(text="🖌 Иллюстрация")],
+        [KeyboardButton(text="⬅️ Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -221,7 +226,8 @@ def get_image_style_keyboard() -> ReplyKeyboardMarkup:
 def get_image_size_keyboard() -> ReplyKeyboardMarkup:
     buttons = [
         [KeyboardButton(text="⬜ Квадрат"), KeyboardButton(text="⬆️ Вертикальный")],
-        [KeyboardButton(text="↔️ Горизонтальный")]
+        [KeyboardButton(text="↔️ Горизонтальный")],
+        [KeyboardButton(text="⬅️ Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -346,6 +352,37 @@ def get_tariffs_keyboard() -> InlineKeyboardMarkup:
 
 def get_back_to_menu_keyboard() -> ReplyKeyboardMarkup:
     buttons = [[KeyboardButton(text="⬅️ Назад")]]
+    return ReplyKeyboardMarkup(
+        keyboard=buttons,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+
+# ==================== ДОПОЛНИТЕЛЬНЫЕ КЛАВИАТУРЫ ====================
+
+def get_marketplace_menu_keyboard() -> ReplyKeyboardMarkup:
+    """Меню раздела «Маркетплейсы»."""
+    buttons = [
+        [KeyboardButton(text="📦 Карточка товара")],
+        [KeyboardButton(text="📝 SEO-описание")],
+        [KeyboardButton(text="🎯 Анализ конкурентов")],
+        [KeyboardButton(text="💎 Улучшение названия")],
+        [KeyboardButton(text="⬅️ Назад")]
+    ]
+    return ReplyKeyboardMarkup(
+        keyboard=buttons,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+
+def get_assistant_menu_keyboard() -> ReplyKeyboardMarkup:
+    """Меню AI Ассистента."""
+    buttons = [
+        [KeyboardButton(text="💬 Спросить AI")],
+        [KeyboardButton(text="⬅️ Назад")]
+    ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
         resize_keyboard=True,

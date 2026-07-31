@@ -40,7 +40,7 @@ def get_sales_menu_keyboard() -> ReplyKeyboardMarkup:
         ],
         [
             KeyboardButton(text="📑 Коммерческое предложение"),
-            KeyboardButton(text="🛡️ Работа с возражениями")  # ← исправлено: 🎯 → 🛡️
+            KeyboardButton(text="🛡️ Работа с возражениями")
         ],
         [
             KeyboardButton(text="📊 Анализ переписки"),
@@ -348,10 +348,18 @@ def get_tariffs_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-# ==================== ОБЩИЕ ====================
+# ==================== МАРКЕТПЛЕЙСЫ ====================
 
-def get_back_to_menu_keyboard() -> ReplyKeyboardMarkup:
-    buttons = [[KeyboardButton(text="⬅️ Назад")]]
+def get_marketplace_platform_keyboard() -> ReplyKeyboardMarkup:
+    """Клавиатура выбора площадки для маркетплейсов."""
+    buttons = [
+        [KeyboardButton(text="🛍️ Wildberries")],
+        [KeyboardButton(text="🛒 Ozon")],
+        [KeyboardButton(text="📦 Яндекс.Маркет")],
+        [KeyboardButton(text="🛍️ AliExpress")],
+        [KeyboardButton(text="🌐 Другое")],
+        [KeyboardButton(text="⬅️ Назад")]
+    ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
         resize_keyboard=True,
@@ -359,15 +367,14 @@ def get_back_to_menu_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
-# ==================== ДОПОЛНИТЕЛЬНЫЕ КЛАВИАТУРЫ ====================
-
-def get_marketplace_menu_keyboard() -> ReplyKeyboardMarkup:
-    """Меню раздела «Маркетплейсы»."""
+def get_marketplace_task_keyboard() -> ReplyKeyboardMarkup:
+    """Клавиатура выбора задачи для маркетплейсов."""
     buttons = [
         [KeyboardButton(text="📦 Карточка товара")],
         [KeyboardButton(text="📝 SEO-описание")],
         [KeyboardButton(text="🎯 Анализ конкурентов")],
         [KeyboardButton(text="💎 Улучшение названия")],
+        [KeyboardButton(text="💬 Ответ клиенту")],
         [KeyboardButton(text="⬅️ Назад")]
     ]
     return ReplyKeyboardMarkup(
@@ -377,12 +384,10 @@ def get_marketplace_menu_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
-def get_assistant_menu_keyboard() -> ReplyKeyboardMarkup:
-    """Меню AI Ассистента."""
-    buttons = [
-        [KeyboardButton(text="💬 Спросить AI")],
-        [KeyboardButton(text="⬅️ Назад")]
-    ]
+# ==================== ОБЩИЕ ====================
+
+def get_back_to_menu_keyboard() -> ReplyKeyboardMarkup:
+    buttons = [[KeyboardButton(text="⬅️ Назад")]]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
         resize_keyboard=True,

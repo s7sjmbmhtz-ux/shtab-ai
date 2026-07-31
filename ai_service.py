@@ -199,7 +199,7 @@ class ImageProvider(AIProvider):
 
 
 # ============================================================
-# VIDEO PROVIDER (GenAPI)
+# VIDEO PROVIDER (GenAPI) — ИСПРАВЛЕННЫЙ
 # ============================================================
 
 class VideoProvider(AIProvider):
@@ -215,7 +215,6 @@ class VideoProvider(AIProvider):
         }
         
         payload = {
-            "model": model,
             "prompt": prompt,
             "duration": kwargs.get("duration", 5),
             "size": kwargs.get("size", "1280x720"),
@@ -230,8 +229,16 @@ class VideoProvider(AIProvider):
 
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
 
+        # ============================================================
+        # ПРАВИЛЬНЫЙ ЭНДПОИНТ ДЛЯ GenAPI
+        # ============================================================
+        # model — это api_model из VIDEO_MODELS (например: ltx-video, cogvideox, kling-v1, etc.)
+        url = f"{self.base_url}/api/v1/networks/{model}"
+        logger.info(f"📤 Video API запрос: {url}")
+        logger.info(f"📤 Payload: {payload}")
+
         response = await self.client.post(
-            f"{self.base_url}/video/generations",
+            url,
             headers=headers,
             json=payload,
             timeout=timeout
@@ -255,7 +262,7 @@ class VideoProvider(AIProvider):
             result = await self._make_request(prompt=prompt, model=model, **kwargs_copy)
             elapsed = asyncio.get_event_loop().time() - start_time
 
-            logger.info(f"Video API ответ: {result}")
+            logger.info(f"✅ Video API ответ: {result}")
 
             if not result:
                 return AIResponse(
@@ -288,7 +295,7 @@ class VideoProvider(AIProvider):
                     video_url = result["videos"][0].get("url")
 
             if not video_url:
-                logger.error(f"Не удалось найти URL видео в ответе: {result}")
+                logger.error(f"❌ Не удалось найти URL видео в ответе: {result}")
                 return AIResponse(
                     content="",
                     provider="genapi_video",
@@ -318,7 +325,8 @@ class VideoProvider(AIProvider):
             )
 
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP ошибка Video API: {e.response.status_code} - {e.response.text}")
+            logger.error(f"❌ HTTP ошибка Video API: {e.response.status_code}")
+            logger.error(f"❌ Response: {e.response.text[:500]}")
             return AIResponse(
                 content="",
                 provider="genapi_video",
@@ -328,7 +336,7 @@ class VideoProvider(AIProvider):
                 metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
             )
         except Exception as e:
-            logger.error(f"Ошибка генерации видео: {e}")
+            logger.error(f"❌ Ошибка генерации видео: {e}")
             return AIResponse(
                 content="",
                 provider="genapi_video",

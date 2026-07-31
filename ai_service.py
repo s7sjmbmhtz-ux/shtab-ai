@@ -45,7 +45,6 @@ class TextProvider(AIProvider):
             "Content-Type": "application/json"
         }
         payload = {
-            "model": model,
             "messages": [
                 {"role": "user", "content": prompt}
             ],
@@ -55,7 +54,7 @@ class TextProvider(AIProvider):
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
 
         response = await self.client.post(
-            f"{self.base_url}/v1/chat/completions",
+            f"{self.base_url}/api/v1/networks/{model}",
             headers=headers,
             json=payload,
             timeout=timeout
@@ -63,6 +62,7 @@ class TextProvider(AIProvider):
         response.raise_for_status()
         data = response.json()
         
+        # Обработка ответа для текстовых моделей
         if "choices" in data and len(data["choices"]) > 0:
             return data["choices"][0].get("message", {}).get("content", "")
         return data.get("result", data.get("response", str(data)))
@@ -126,7 +126,6 @@ class ImageProvider(AIProvider):
             "Content-Type": "application/json"
         }
         payload = {
-            "model": model,
             "prompt": prompt,
             "size": size,
             "n": 1
@@ -135,7 +134,7 @@ class ImageProvider(AIProvider):
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
 
         response = await self.client.post(
-            f"{self.base_url}/v1/images/generations",
+            f"{self.base_url}/api/v1/networks/{model}",
             headers=headers,
             json=payload,
             timeout=timeout
@@ -199,7 +198,7 @@ class ImageProvider(AIProvider):
 
 
 # ============================================================
-# VIDEO PROVIDER (GenAPI) — УНИВЕРСАЛЬНЫЙ ДЛЯ ВСЕХ МОДЕЛЕЙ
+# VIDEO PROVIDER (GenAPI)
 # ============================================================
 
 class VideoProvider(AIProvider):
@@ -375,7 +374,6 @@ class VideoProvider(AIProvider):
                 "duration": kwargs.get("duration", 5),
                 "ratio": kwargs.get("ratio", "1280:720")
             })
-            # firstFrame — обязательный параметр!
             if kwargs.get("firstFrame"):
                 payload["firstFrame"] = kwargs.get("firstFrame")
             else:
@@ -410,11 +408,9 @@ class VideoProvider(AIProvider):
             kwargs_copy.pop("duration", None)
             kwargs_copy.pop("size", None)
             
-            # Для Veo 3.1 и Veo 3.1 Lite добавляем duration_str
             if model in ["veo-3.1", "veo-3-1-lite"]:
                 kwargs_copy["duration_str"] = f"{duration}s"
             
-            # Для Luma Ray2 добавляем duration_str
             if model == "luma":
                 kwargs_copy["duration_str"] = f"{duration}s"
             
@@ -434,7 +430,6 @@ class VideoProvider(AIProvider):
 
             video_url = None
             
-            # Если это асинхронный запрос — возвращаем request_id
             if result.get("request_id") and result.get("status") == "starting":
                 logger.info(f"⏳ Видео генерируется, request_id: {result.get('request_id')}")
                 return AIResponse(
@@ -446,7 +441,6 @@ class VideoProvider(AIProvider):
                     metadata={"request_id": result.get("request_id")}
                 )
             
-            # Стандартные форматы ответа
             if result.get("data") and isinstance(result["data"], list) and len(result["data"]) > 0:
                 video_url = result["data"][0].get("url")
                 if not video_url and result["data"][0].get("b64_json"):

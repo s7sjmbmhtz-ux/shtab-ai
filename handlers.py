@@ -83,12 +83,37 @@ class SalesStates(StatesGroup):
 
 class MarketingStates(StatesGroup):
     menu = State()
+    # Продающий пост
     post_product = State()
     post_audience = State()
     post_platform = State()
     post_style = State()
     post_result = State()
     post_refinement = State()
+    # Контент-план
+    content_plan_niche = State()
+    content_plan_audience = State()
+    content_plan_platform = State()
+    content_plan_result = State()
+    # Рекламный оффер
+    offer_product = State()
+    offer_benefit = State()
+    offer_audience = State()
+    offer_result = State()
+    # Email-рассылка
+    email_topic = State()
+    email_audience = State()
+    email_goal = State()
+    email_result = State()
+    # УТП
+    utp_product = State()
+    utp_competitors = State()
+    utp_benefit = State()
+    utp_result = State()
+    # Анализ ЦА
+    audience_product = State()
+    audience_details = State()
+    audience_result = State()
 
 
 class ImageStates(StatesGroup):
@@ -194,9 +219,7 @@ async def script_product(message: types.Message, state: FSMContext):
         return
     await state.update_data(product=message.text)
     await state.set_state(SalesStates.script_client)
-    await message.answer(
-        "Шаг 2 из 5\nКто ваш клиент?"
-    )
+    await message.answer("Шаг 2 из 5\nКто ваш клиент?")
 
 
 @router.message(StateFilter(SalesStates.script_client))
@@ -206,9 +229,7 @@ async def script_client(message: types.Message, state: FSMContext):
         return
     await state.update_data(client=message.text)
     await state.set_state(SalesStates.script_average_check)
-    await message.answer(
-        "Шаг 3 из 5\nКакой у вас средний чек?"
-    )
+    await message.answer("Шаг 3 из 5\nКакой у вас средний чек?")
 
 
 @router.message(StateFilter(SalesStates.script_average_check))
@@ -317,9 +338,7 @@ async def cp_company(message: types.Message, state: FSMContext):
         return
     await state.update_data(company=message.text)
     await state.set_state(SalesStates.cp_client)
-    await message.answer(
-        "Шаг 2 из 5\nКто ваш клиент (компания/должность)?"
-    )
+    await message.answer("Шаг 2 из 5\nКто ваш клиент (компания/должность)?")
 
 
 @router.message(StateFilter(SalesStates.cp_client))
@@ -329,9 +348,7 @@ async def cp_client(message: types.Message, state: FSMContext):
         return
     await state.update_data(client=message.text)
     await state.set_state(SalesStates.cp_product)
-    await message.answer(
-        "Шаг 3 из 5\nЧто вы предлагаете? (продукт/услуга)"
-    )
+    await message.answer("Шаг 3 из 5\nЧто вы предлагаете? (продукт/услуга)")
 
 
 @router.message(StateFilter(SalesStates.cp_product))
@@ -341,9 +358,7 @@ async def cp_product(message: types.Message, state: FSMContext):
         return
     await state.update_data(product=message.text)
     await state.set_state(SalesStates.cp_problem)
-    await message.answer(
-        "Шаг 4 из 5\nКакую проблему решает ваш продукт?"
-    )
+    await message.answer("Шаг 4 из 5\nКакую проблему решает ваш продукт?")
 
 
 @router.message(StateFilter(SalesStates.cp_problem))
@@ -353,9 +368,7 @@ async def cp_problem(message: types.Message, state: FSMContext):
         return
     await state.update_data(problem=message.text)
     await state.set_state(SalesStates.cp_price)
-    await message.answer(
-        "Шаг 5 из 5\nСтоимость (или ценовой диапазон):"
-    )
+    await message.answer("Шаг 5 из 5\nСтоимость (или ценовой диапазон):")
 
 
 @router.message(StateFilter(SalesStates.cp_price))
@@ -547,7 +560,6 @@ async def generate_analysis(message: types.Message, state: FSMContext):
     loading = await message.answer("📊 Анализирую переписку... Это может занять до 30 секунд. Пожалуйста, подождите.")
 
     try:
-        # Ограничиваем текст для скорости
         max_text_length = 1500
         if len(text) > max_text_length:
             text = text[:max_text_length] + "\n...(текст обрезан для анализа)"
@@ -585,7 +597,6 @@ async def generate_analysis(message: types.Message, state: FSMContext):
             await message.answer("❌ Ошибка генерации анализа. Попробуйте позже.")
             return
 
-        # Очищаем текст от маркдауна
         content = ai_result.content
         
         content = re.sub(r'\*\*(.+?)\*\*', r'\1', content)
@@ -767,6 +778,8 @@ async def enter_marketing(message: types.Message, state: FSMContext):
     )
 
 
+# ========== ПРОДАЮЩИЙ ПОСТ ==========
+
 @router.message(F.text == "📝 Продающий пост")
 async def start_post(message: types.Message, state: FSMContext):
     await state.clear()
@@ -784,9 +797,7 @@ async def post_product(message: types.Message, state: FSMContext):
         return
     await state.update_data(product=message.text)
     await state.set_state(MarketingStates.post_audience)
-    await message.answer(
-        "Шаг 2 из 4\nКто ваша ЦА?"
-    )
+    await message.answer("Шаг 2 из 4\nКто ваша ЦА?")
 
 
 @router.message(StateFilter(MarketingStates.post_audience))
@@ -872,6 +883,359 @@ async def generate_post(message: types.Message, state: FSMContext):
 
 
 async def cancel_post(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(MarketingStates.menu)
+    await message.answer("❌ Отменено.", reply_markup=get_marketing_menu_keyboard())
+
+
+# ========== КОНТЕНТ-ПЛАН ==========
+
+@router.message(F.text == "📅 Контент-план")
+async def start_content_plan(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(MarketingStates.content_plan_niche)
+    await message.answer(
+        "📅 Создание контент-плана\n\n"
+        "Шаг 1 из 3\nКакая у вас ниша?",
+        reply_markup=get_back_to_menu_keyboard()
+    )
+
+
+@router.message(StateFilter(MarketingStates.content_plan_niche))
+async def content_plan_niche(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(niche=message.text)
+    await state.set_state(MarketingStates.content_plan_audience)
+    await message.answer("Шаг 2 из 3\nКто ваша целевая аудитория?")
+
+
+@router.message(StateFilter(MarketingStates.content_plan_audience))
+async def content_plan_audience(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(audience=message.text)
+    await state.set_state(MarketingStates.content_plan_platform)
+    await message.answer("Шаг 3 из 3\nКакие платформы? (Telegram, Instagram, VK, и т.д.)")
+
+
+@router.message(StateFilter(MarketingStates.content_plan_platform))
+async def content_plan_platform(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(platform=message.text)
+    await generate_content_plan(message, state)
+
+
+async def generate_content_plan(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    if any(f not in data for f in ["niche", "audience", "platform"]):
+        await message.answer("⚠️ Заполните все шаги.")
+        return
+
+    loading = await message.answer("📅 Генерирую контент-план...")
+    try:
+        result = await execute_tool(
+            tool_id=ToolIds.MARKETING_POST,
+            user_id=message.from_user.id,
+            input_data={"type": "content_plan", **data},
+            session=None,
+            mode="initial"
+        )
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        await send_pipeline_result(message, state, result, "📅 Ваш контент-план готов!", None)
+    except Exception as e:
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        logger.error(f"Ошибка: {e}")
+        await message.answer("❌ Ошибка. Попробуйте позже.")
+
+
+# ========== РЕКЛАМНЫЙ ОФФЕР ==========
+
+@router.message(F.text == "🎯 Рекламный оффер")
+async def start_offer(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(MarketingStates.offer_product)
+    await message.answer(
+        "🎯 Создание рекламного оффера\n\n"
+        "Шаг 1 из 3\nЧто вы продаёте?",
+        reply_markup=get_back_to_menu_keyboard()
+    )
+
+
+@router.message(StateFilter(MarketingStates.offer_product))
+async def offer_product(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(product=message.text)
+    await state.set_state(MarketingStates.offer_benefit)
+    await message.answer("Шаг 2 из 3\nКакая главная выгода для клиента?")
+
+
+@router.message(StateFilter(MarketingStates.offer_benefit))
+async def offer_benefit(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(benefit=message.text)
+    await state.set_state(MarketingStates.offer_audience)
+    await message.answer("Шаг 3 из 3\nКто ваша целевая аудитория?")
+
+
+@router.message(StateFilter(MarketingStates.offer_audience))
+async def offer_audience(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(audience=message.text)
+    await generate_offer(message, state)
+
+
+async def generate_offer(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    if any(f not in data for f in ["product", "benefit", "audience"]):
+        await message.answer("⚠️ Заполните все шаги.")
+        return
+
+    loading = await message.answer("🎯 Генерирую рекламный оффер...")
+    try:
+        result = await execute_tool(
+            tool_id=ToolIds.MARKETING_POST,
+            user_id=message.from_user.id,
+            input_data={"type": "offer", **data},
+            session=None,
+            mode="initial"
+        )
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        await send_pipeline_result(message, state, result, "🎯 Ваш рекламный оффер готов!", None)
+    except Exception as e:
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        logger.error(f"Ошибка: {e}")
+        await message.answer("❌ Ошибка. Попробуйте позже.")
+
+
+# ========== EMAIL-РАССЫЛКА ==========
+
+@router.message(F.text == "📧 Email-рассылка")
+async def start_email(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(MarketingStates.email_topic)
+    await message.answer(
+        "📧 Создание Email-рассылки\n\n"
+        "Шаг 1 из 3\nТема письма:",
+        reply_markup=get_back_to_menu_keyboard()
+    )
+
+
+@router.message(StateFilter(MarketingStates.email_topic))
+async def email_topic(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(topic=message.text)
+    await state.set_state(MarketingStates.email_audience)
+    await message.answer("Шаг 2 из 3\nКто получатели?")
+
+
+@router.message(StateFilter(MarketingStates.email_audience))
+async def email_audience(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(audience=message.text)
+    await state.set_state(MarketingStates.email_goal)
+    await message.answer("Шаг 3 из 3\nКакая цель письма? (продажа, информирование, приглашение)")
+
+
+@router.message(StateFilter(MarketingStates.email_goal))
+async def email_goal(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(goal=message.text)
+    await generate_email(message, state)
+
+
+async def generate_email(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    if any(f not in data for f in ["topic", "audience", "goal"]):
+        await message.answer("⚠️ Заполните все шаги.")
+        return
+
+    loading = await message.answer("📧 Генерирую Email-рассылку...")
+    try:
+        result = await execute_tool(
+            tool_id=ToolIds.MARKETING_POST,
+            user_id=message.from_user.id,
+            input_data={"type": "email", **data},
+            session=None,
+            mode="initial"
+        )
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        await send_pipeline_result(message, state, result, "📧 Ваша Email-рассылка готова!", None)
+    except Exception as e:
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        logger.error(f"Ошибка: {e}")
+        await message.answer("❌ Ошибка. Попробуйте позже.")
+
+
+# ========== УТП ==========
+
+@router.message(F.text == "💎 УТП")
+async def start_utp(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(MarketingStates.utp_product)
+    await message.answer(
+        "💎 Создание УТП\n\n"
+        "Шаг 1 из 3\nЧто вы продаёте?",
+        reply_markup=get_back_to_menu_keyboard()
+    )
+
+
+@router.message(StateFilter(MarketingStates.utp_product))
+async def utp_product(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(product=message.text)
+    await state.set_state(MarketingStates.utp_competitors)
+    await message.answer("Шаг 2 из 3\nКто ваши основные конкуренты?")
+
+
+@router.message(StateFilter(MarketingStates.utp_competitors))
+async def utp_competitors(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(competitors=message.text)
+    await state.set_state(MarketingStates.utp_benefit)
+    await message.answer("Шаг 3 из 3\nВаше главное преимущество?")
+
+
+@router.message(StateFilter(MarketingStates.utp_benefit))
+async def utp_benefit(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(benefit=message.text)
+    await generate_utp(message, state)
+
+
+async def generate_utp(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    if any(f not in data for f in ["product", "competitors", "benefit"]):
+        await message.answer("⚠️ Заполните все шаги.")
+        return
+
+    loading = await message.answer("💎 Генерирую УТП...")
+    try:
+        result = await execute_tool(
+            tool_id=ToolIds.MARKETING_POST,
+            user_id=message.from_user.id,
+            input_data={"type": "utp", **data},
+            session=None,
+            mode="initial"
+        )
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        await send_pipeline_result(message, state, result, "💎 Ваше УТП готово!", None)
+    except Exception as e:
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        logger.error(f"Ошибка: {e}")
+        await message.answer("❌ Ошибка. Попробуйте позже.")
+
+
+# ========== АНАЛИЗ ЦА ==========
+
+@router.message(F.text == "🔍 Анализ ЦА")
+async def start_audience_analysis(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(MarketingStates.audience_product)
+    await message.answer(
+        "🔍 Анализ ЦА\n\n"
+        "Шаг 1 из 2\nЧто вы продаёте?",
+        reply_markup=get_back_to_menu_keyboard()
+    )
+
+
+@router.message(StateFilter(MarketingStates.audience_product))
+async def audience_product(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(product=message.text)
+    await state.set_state(MarketingStates.audience_details)
+    await message.answer("Шаг 2 из 2\nДополнительная информация (кто ваши клиенты, их проблемы, возраст и т.д.)")
+
+
+@router.message(StateFilter(MarketingStates.audience_details))
+async def audience_details(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_marketing_tool(message, state)
+        return
+    await state.update_data(details=message.text)
+    await generate_audience_analysis(message, state)
+
+
+async def generate_audience_analysis(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    if any(f not in data for f in ["product", "details"]):
+        await message.answer("⚠️ Заполните все шаги.")
+        return
+
+    loading = await message.answer("🔍 Анализирую целевую аудиторию...")
+    try:
+        result = await execute_tool(
+            tool_id=ToolIds.MARKETING_POST,
+            user_id=message.from_user.id,
+            input_data={"type": "audience_analysis", **data},
+            session=None,
+            mode="initial"
+        )
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        await send_pipeline_result(message, state, result, "🔍 Анализ ЦА готов!", None)
+    except Exception as e:
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        logger.error(f"Ошибка: {e}")
+        await message.answer("❌ Ошибка. Попробуйте позже.")
+
+
+# ========== ОТМЕНА ДЛЯ МАРКЕТИНГА ==========
+
+async def cancel_marketing_tool(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(MarketingStates.menu)
     await message.answer("❌ Отменено.", reply_markup=get_marketing_menu_keyboard())
@@ -1384,7 +1748,26 @@ async def back_to_main(message: types.Message, state: FSMContext):
         MarketingStates.post_audience,
         MarketingStates.post_platform,
         MarketingStates.post_style,
-        MarketingStates.post_result
+        MarketingStates.post_result,
+        MarketingStates.content_plan_niche,
+        MarketingStates.content_plan_audience,
+        MarketingStates.content_plan_platform,
+        MarketingStates.content_plan_result,
+        MarketingStates.offer_product,
+        MarketingStates.offer_benefit,
+        MarketingStates.offer_audience,
+        MarketingStates.offer_result,
+        MarketingStates.email_topic,
+        MarketingStates.email_audience,
+        MarketingStates.email_goal,
+        MarketingStates.email_result,
+        MarketingStates.utp_product,
+        MarketingStates.utp_competitors,
+        MarketingStates.utp_benefit,
+        MarketingStates.utp_result,
+        MarketingStates.audience_product,
+        MarketingStates.audience_details,
+        MarketingStates.audience_result,
     ]
     image_states = [
         ImageStates.description,

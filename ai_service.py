@@ -252,7 +252,13 @@ class VideoProvider(AIProvider):
         try:
             start_time = asyncio.get_event_loop().time()
             
-            result = await self._make_request(prompt=prompt, model=model, **kwargs)
+            # Убираем уже использованные аргументы из kwargs
+            kwargs_copy = kwargs.copy()
+            kwargs_copy.pop("model", None)
+            kwargs_copy.pop("duration", None)
+            kwargs_copy.pop("size", None)
+            
+            result = await self._make_request(prompt=prompt, model=model, **kwargs_copy)
             elapsed = asyncio.get_event_loop().time() - start_time
 
             logger.info(f"Video API ответ: {result}")

@@ -5,7 +5,7 @@ import base64
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 from abc import ABC, abstractmethod
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
 
 from settings import settings
 from models import (
@@ -37,7 +37,7 @@ class TextProvider(AIProvider):
         self.default_model = settings.free_text_model
 
     @retry(
-        stop=stop_after_attempt(3),
+        stop=stop_after_attempt(2),
         wait=wait_exponential(multiplier=1, min=1, max=10),
         retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
     )
@@ -54,6 +54,8 @@ class TextProvider(AIProvider):
             "temperature": temperature
         }
 
+        logger.info(f"Отправка запроса к Provod.ai: model={model}, prompt_length={len(prompt)}")
+
         response = await self.client.post(
             f"{self.base_url}/chat/completions",
             headers=headers,
@@ -62,7 +64,6 @@ class TextProvider(AIProvider):
         response.raise_for_status()
         data = response.json()
         
-        # Provod.ai использует формат OpenAI
         if "choices" in data and len(data["choices"]) > 0:
             return data["choices"][0].get("message", {}).get("content", "")
         else:
@@ -94,6 +95,18 @@ class TextProvider(AIProvider):
                 status=GenerationStatus.SUCCESS,
                 response_type=ResponseType.TEXT
             )
+            
+        except RetryError as e:
+            logger.error(f"RetryError при запросе к Provod.ai: {e}")
+            return AIResponse(
+                content="",
+                provider="deepseek",
+                model=model,
+                status=GenerationStatus.ERROR,
+                metadata={"error": "API не отвечает после нескольких попыток. Проверьте подключение."},
+                response_type=ResponseType.TEXT
+            )
+            
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP ошибка Provod.ai: {e.response.status_code} - {e.response.text}")
             return AIResponse(
@@ -160,7 +173,7 @@ class ImageProvider(AIProvider):
             result = await self._make_request(prompt, size, model)
             elapsed = asyncio.get_event_loop().time() - start_time
 
-            logger.info(f"Image API ответ: {result}")
+            logger.info(f"Image API ответ получен")
 
             if not result:
                 return AIResponse(
@@ -171,27 +184,21 @@ class ImageProvider(AIProvider):
                     response_type=ResponseType.IMAGE
                 )
 
-            # Пробуем разные форматы ответа
             image_url = None
             
             if result.get("data") and isinstance(result["data"], list):
-                # Формат 1: url (OpenAI)
                 image_url = result["data"][0].get("url")
                 
-                # Формат 2: b64_json (Provod.ai)
                 if not image_url and result["data"][0].get("b64_json"):
                     b64_data = result["data"][0]["b64_json"]
                     image_url = f"data:image/png;base64,{b64_data}"
             
-            # Формат 3: url (прямой)
             if not image_url and result.get("url"):
                 image_url = result["url"]
             
-            # Формат 4: images[0].url
             if not image_url and result.get("images"):
                 image_url = result["images"][0].get("url")
             
-            # Формат 5: output (Replicate)
             if not image_url and result.get("output"):
                 if isinstance(result["output"], list) and len(result["output"]) > 0:
                     image_url = result["output"][0]
@@ -199,14 +206,14 @@ class ImageProvider(AIProvider):
                     image_url = result["output"]
 
             if not image_url:
-                logger.error(f"Не удалось найти URL в ответе: {result}")
+                logger.error(f"Не удалось найти URL в ответе")
                 return AIResponse(
                     content="",
                     provider="image_generator",
                     model=model,
                     status=GenerationStatus.EMPTY_RESPONSE,
                     response_type=ResponseType.IMAGE,
-                    metadata={"error": "URL изображения не найден", "raw_response": str(result)[:500]}
+                    metadata={"error": "URL изображения не найден"}
                 )
 
             response_data = {
@@ -226,6 +233,16 @@ class ImageProvider(AIProvider):
                 metadata=response_data
             )
 
+        except RetryError as e:
+            logger.error(f"RetryError при запросе изображения: {e}")
+            return AIResponse(
+                content="",
+                provider="image_generator",
+                model=model,
+                status=GenerationStatus.ERROR,
+                response_type=ResponseType.IMAGE,
+                metadata={"error": "API изображений не отвечает"}
+            )
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP ошибка Image API: {e.response.status_code} - {e.response.text}")
             return AIResponse(
@@ -234,7 +251,7 @@ class ImageProvider(AIProvider):
                 model=model,
                 status=GenerationStatus.ERROR,
                 response_type=ResponseType.IMAGE,
-                metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
+                metadata={"error": f"HTTP {e.response.status_code}"}
             )
         except Exception as e:
             logger.error(f"Ошибка генерации изображения: {e}")
@@ -259,7 +276,6 @@ class AudioProvider(AIProvider):
         self.default_model = settings.default_stt_model
 
     async def _make_request(self, audio: AudioFile, language: str, model: str) -> Dict[str, Any]:
-        # TODO: Реализовать реальный STT API
         raise NotImplementedError("Распознавание голоса пока не реализовано")
 
     def _build_response(self, result: Dict[str, Any], audio: AudioFile, language: str, model: Optional[str], elapsed: float) -> AIResponse:
@@ -283,7 +299,6 @@ class AudioProvider(AIProvider):
         )
 
     async def generate(self, prompt: str = "", **kwargs) -> AIResponse:
-        # Заглушка
         return AIResponse(
             content="",
             provider=self.stt_provider,

@@ -7,7 +7,7 @@ from settings import settings
 
 def is_admin(user_id: int) -> bool:
     """Проверяет, является ли пользователь администратором."""
-    return user_id == settings.admin_telegram_id
+    return user_id == settings.ADMIN_TELEGRAM_ID
 
 
 async def get_admin_stats():
@@ -40,5 +40,10 @@ async def get_admin_stats():
         cursor = await conn.execute("SELECT COALESCE(SUM(amount), 0) as revenue FROM payments WHERE status = 'success'")
         row = await cursor.fetchone()
         stats["revenue"] = row["revenue"] if row else 0
+
+        # Общее количество токенов в системе
+        cursor = await conn.execute("SELECT COALESCE(SUM(tokens), 0) as total_tokens FROM users")
+        row = await cursor.fetchone()
+        stats["total_tokens"] = row["total_tokens"] if row else 0
 
         return stats

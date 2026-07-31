@@ -10,13 +10,12 @@ class Settings:
     BOT_USERNAME = os.getenv("BOT_USERNAME", "@ShtabProBot")
 
     # GENAPI
-    GENAPI_API_KEY = os.getenv("GENAPI_API_KEY", "sk-sh5NO6Y51I6apX2Y16ZOmIskyvjpSPydUXHNRGtKH6g6rWDSWiaSPhAEnt7E")
-    GENAPI_BASE_URL = os.getenv("GENAPI_BASE_URL", "https://api.gen-api.ru/v1")
+    GENAPI_API_KEY = os.getenv("GENAPI_API_KEY", "sk-x44sRSwk2lzgUBOz3Z5RAu6uerXfgfIpYvOaXYibJfiW2M5EzDnEHJsGeBuO")
+    GENAPI_BASE_URL = os.getenv("GENAPI_BASE_URL", "https://proxy.gen-api.ru/v1")
 
     # ADMIN
     ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", "548576688"))
     
-    # Для обратной совместимости в admin.py
     @property
     def admin_telegram_id(self):
         return self.ADMIN_TELEGRAM_ID
@@ -65,7 +64,6 @@ class Settings:
     MAX_AUDIO_DURATION_SEC = int(os.getenv("MAX_AUDIO_DURATION_SEC", "300"))
     MAX_AUDIO_SIZE_MB = int(os.getenv("MAX_AUDIO_SIZE_MB", "20"))
 
-    # Алиас для обратной совместимости
     @property
     def db_path(self):
         return self.DB_PATH

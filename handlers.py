@@ -144,11 +144,11 @@ async def start_handler(message: types.Message, state: FSMContext):
 
     text = (
         f"👋 Привет, {message.from_user.first_name}!\n\n"
-        "Добро пожаловать в **ШТАБ AI** — твой AI-сотрудник для бизнеса.\n\n"
+        "Добро пожаловать в ШТАБ AI — твой AI-сотрудник для бизнеса.\n\n"
         "Выбери нужный раздел в меню ниже 👇"
     )
 
-    await message.answer("текст", parse_mode=None)
+    await message.answer(text, reply_markup=get_main_menu())
     await state.clear()
     logger.info(f"Пользователь {message.from_user.id} выполнил /start")
 
@@ -166,9 +166,8 @@ async def enter_sales(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(SalesStates.menu)
     await message.answer(
-        "📊 **Раздел «Продажи»**\n\nВыберите инструмент:",
-        reply_markup=get_sales_menu_keyboard(),
-        parse_mode="HTML"
+        "📊 Раздел «Продажи»\n\nВыберите инструмент:",
+        reply_markup=get_sales_menu_keyboard()
     )
 
 
@@ -179,10 +178,9 @@ async def start_script(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(SalesStates.script_product)
     await message.answer(
-        "📝 **Создание скрипта продаж**\n\n"
-        "**Шаг 1 из 5**\nЧто вы продаёте?",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        "📝 Создание скрипта продаж\n\n"
+        "Шаг 1 из 5\nЧто вы продаёте?",
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -193,7 +191,9 @@ async def script_product(message: types.Message, state: FSMContext):
         return
     await state.update_data(product=message.text)
     await state.set_state(SalesStates.script_client)
-    await message.answer("**Шаг 2 из 5**\nКто ваш клиент?", parse_mode="HTML")
+    await message.answer(
+        "Шаг 2 из 5\nКто ваш клиент?"
+    )
 
 
 @router.message(StateFilter(SalesStates.script_client))
@@ -203,7 +203,9 @@ async def script_client(message: types.Message, state: FSMContext):
         return
     await state.update_data(client=message.text)
     await state.set_state(SalesStates.script_average_check)
-    await message.answer("**Шаг 3 из 5**\nКакой у вас средний чек?", parse_mode="HTML")
+    await message.answer(
+        "Шаг 3 из 5\nКакой у вас средний чек?"
+    )
 
 
 @router.message(StateFilter(SalesStates.script_average_check))
@@ -214,9 +216,8 @@ async def script_check(message: types.Message, state: FSMContext):
     await state.update_data(average_check=message.text)
     await state.set_state(SalesStates.script_format)
     await message.answer(
-        "**Шаг 4 из 5**\nВыберите формат общения:",
-        reply_markup=get_communication_format_keyboard(),
-        parse_mode="HTML"
+        "Шаг 4 из 5\nВыберите формат общения:",
+        reply_markup=get_communication_format_keyboard()
     )
 
 
@@ -232,9 +233,8 @@ async def script_format(message: types.Message, state: FSMContext):
     await state.update_data(communication_format=message.text)
     await state.set_state(SalesStates.script_objections)
     await message.answer(
-        "**Шаг 5 из 5**\nКакие основные возражения вы слышите?",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        "Шаг 5 из 5\nКакие основные возражения вы слышите?",
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -274,7 +274,7 @@ async def generate_script(message: types.Message, state: FSMContext):
             message,
             state,
             result,
-            "💰 **Ваш скрипт готов!**",
+            "💰 Ваш скрипт готов!",
             get_script_result_keyboard()
         ):
             await state.set_state(SalesStates.script_result)
@@ -301,11 +301,9 @@ async def start_cp(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(SalesStates.cp_company)
     await message.answer(
-        "📑 **Создание коммерческого предложения**\n\n"
-        "**Шаг 1 из 5**\n"
-        "Название вашей компании:",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        "📑 Создание коммерческого предложения\n\n"
+        "Шаг 1 из 5\nНазвание вашей компании:",
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -317,9 +315,7 @@ async def cp_company(message: types.Message, state: FSMContext):
     await state.update_data(company=message.text)
     await state.set_state(SalesStates.cp_client)
     await message.answer(
-        "**Шаг 2 из 5**\n"
-        "Кто ваш клиент (компания/должность)?",
-        parse_mode="HTML"
+        "Шаг 2 из 5\nКто ваш клиент (компания/должность)?"
     )
 
 
@@ -331,9 +327,7 @@ async def cp_client(message: types.Message, state: FSMContext):
     await state.update_data(client=message.text)
     await state.set_state(SalesStates.cp_product)
     await message.answer(
-        "**Шаг 3 из 5**\n"
-        "Что вы предлагаете? (продукт/услуга)",
-        parse_mode="HTML"
+        "Шаг 3 из 5\nЧто вы предлагаете? (продукт/услуга)"
     )
 
 
@@ -345,9 +339,7 @@ async def cp_product(message: types.Message, state: FSMContext):
     await state.update_data(product=message.text)
     await state.set_state(SalesStates.cp_problem)
     await message.answer(
-        "**Шаг 4 из 5**\n"
-        "Какую проблему решает ваш продукт?",
-        parse_mode="HTML"
+        "Шаг 4 из 5\nКакую проблему решает ваш продукт?"
     )
 
 
@@ -359,9 +351,7 @@ async def cp_problem(message: types.Message, state: FSMContext):
     await state.update_data(problem=message.text)
     await state.set_state(SalesStates.cp_price)
     await message.answer(
-        "**Шаг 5 из 5**\n"
-        "Стоимость (или ценовой диапазон):",
-        parse_mode="HTML"
+        "Шаг 5 из 5\nСтоимость (или ценовой диапазон):"
     )
 
 
@@ -408,7 +398,7 @@ async def generate_cp(message: types.Message, state: FSMContext):
             message,
             state,
             result,
-            "📑 **Ваше коммерческое предложение готово!**",
+            "📑 Ваше коммерческое предложение готово!",
             None
         )
 
@@ -434,11 +424,9 @@ async def start_reply(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(SalesStates.reply_question)
     await message.answer(
-        "💬 **Ответ клиенту**\n\n"
-        "**Шаг 1 из 2**\n"
-        "Что спрашивает клиент? (опишите вопрос или ситуацию)",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        "💬 Ответ клиенту\n\n"
+        "Шаг 1 из 2\nЧто спрашивает клиент? (опишите вопрос или ситуацию)",
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -450,10 +438,8 @@ async def reply_question(message: types.Message, state: FSMContext):
     await state.update_data(question=message.text)
     await state.set_state(SalesStates.reply_context)
     await message.answer(
-        "**Шаг 2 из 2**\n"
-        "Дополнительный контекст (необязательно):\n"
-        "Например: какой товар, какая цена, какие были предыдущие сообщения",
-        parse_mode="HTML"
+        "Шаг 2 из 2\nДополнительный контекст (необязательно):\n"
+        "Например: какой товар, какая цена, какие были предыдущие сообщения"
     )
 
 
@@ -496,7 +482,7 @@ async def generate_reply(message: types.Message, state: FSMContext):
             message,
             state,
             result,
-            "💬 **Готовый ответ клиенту:**",
+            "💬 Готовый ответ клиенту:",
             None
         )
 
@@ -522,15 +508,14 @@ async def start_analysis(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(SalesStates.analysis_text)
     await message.answer(
-        "📊 **Анализ переписки**\n\n"
+        "📊 Анализ переписки\n\n"
         "Вставьте текст переписки (диалог с клиентом) для анализа.\n\n"
         "Я выявлю:\n"
         "• Качество обработки возражений\n"
         "• Эффективность вопросов\n"
         "• Точки роста\n"
         "• Рекомендации по улучшению",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -579,7 +564,7 @@ async def generate_analysis(message: types.Message, state: FSMContext):
             message,
             state,
             result,
-            "📊 **Анализ переписки готов!**",
+            "📊 Анализ переписки готов!",
             None
         )
 
@@ -605,11 +590,9 @@ async def start_objections(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(SalesStates.objection_product)
     await message.answer(
-        "🛡️ **Работа с возражениями**\n\n"
-        "**Шаг 1 из 2**\n"
-        "Что вы продаёте?",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        "🛡️ Работа с возражениями\n\n"
+        "Шаг 1 из 2\nЧто вы продаёте?",
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -621,10 +604,8 @@ async def objection_product(message: types.Message, state: FSMContext):
     await state.update_data(product=message.text)
     await state.set_state(SalesStates.objection_list)
     await message.answer(
-        "**Шаг 2 из 2**\n"
-        "Какие возражения вы слышите?\n"
-        "Перечислите через запятую или каждое с новой строки",
-        parse_mode="HTML"
+        "Шаг 2 из 2\nКакие возражения вы слышите?\n"
+        "Перечислите через запятую или каждое с новой строки"
     )
 
 
@@ -671,7 +652,7 @@ async def generate_objections(message: types.Message, state: FSMContext):
             message,
             state,
             result,
-            "🛡️ **Готовые ответы на возражения:**",
+            "🛡️ Готовые ответы на возражения:",
             None
         )
 
@@ -703,9 +684,8 @@ async def sales_menu(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await state.set_state(SalesStates.menu)
     await callback.message.answer(
-        "📊 **Раздел «Продажи»**",
-        reply_markup=get_sales_menu_keyboard(),
-        parse_mode="HTML"
+        "📊 Раздел «Продажи»",
+        reply_markup=get_sales_menu_keyboard()
     )
     await callback.answer()
 
@@ -749,9 +729,8 @@ async def enter_marketing(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(MarketingStates.menu)
     await message.answer(
-        "📊 **Раздел «Маркетинг»**\n\nВыберите инструмент:",
-        reply_markup=get_marketing_menu_keyboard(),
-        parse_mode="HTML"
+        "📊 Раздел «Маркетинг»\n\nВыберите инструмент:",
+        reply_markup=get_marketing_menu_keyboard()
     )
 
 
@@ -760,9 +739,8 @@ async def start_post(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(MarketingStates.post_product)
     await message.answer(
-        "📝 **Создание поста**\n\n**Шаг 1 из 4**\nЧто продаёте?",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        "📝 Создание поста\n\nШаг 1 из 4\nЧто продаёте?",
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -773,7 +751,9 @@ async def post_product(message: types.Message, state: FSMContext):
         return
     await state.update_data(product=message.text)
     await state.set_state(MarketingStates.post_audience)
-    await message.answer("**Шаг 2 из 4**\nКто ваша ЦА?", parse_mode="HTML")
+    await message.answer(
+        "Шаг 2 из 4\nКто ваша ЦА?"
+    )
 
 
 @router.message(StateFilter(MarketingStates.post_audience))
@@ -784,9 +764,8 @@ async def post_audience(message: types.Message, state: FSMContext):
     await state.update_data(audience=message.text)
     await state.set_state(MarketingStates.post_platform)
     await message.answer(
-        "**Шаг 3 из 4**\nГде публикуете?",
-        reply_markup=get_platform_keyboard(),
-        parse_mode="HTML"
+        "Шаг 3 из 4\nГде публикуете?",
+        reply_markup=get_platform_keyboard()
     )
 
 
@@ -801,9 +780,8 @@ async def post_platform(message: types.Message, state: FSMContext):
     await state.update_data(platform=PLATFORM_MAP[message.text])
     await state.set_state(MarketingStates.post_style)
     await message.answer(
-        "**Шаг 4 из 4**\nВыберите стиль:",
-        reply_markup=get_style_keyboard(),
-        parse_mode="HTML"
+        "Шаг 4 из 4\nВыберите стиль:",
+        reply_markup=get_style_keyboard()
     )
 
 
@@ -846,7 +824,7 @@ async def generate_post(message: types.Message, state: FSMContext):
             message,
             state,
             result,
-            "📝 **Ваш пост готов!**",
+            "📝 Ваш пост готов!",
             get_post_result_keyboard()
         ):
             await state.set_state(MarketingStates.post_result)
@@ -879,9 +857,8 @@ async def marketing_menu(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await state.set_state(MarketingStates.menu)
     await callback.message.answer(
-        "📊 **Раздел «Маркетинг»**",
-        reply_markup=get_marketing_menu_keyboard(),
-        parse_mode="HTML"
+        "📊 Раздел «Маркетинг»",
+        reply_markup=get_marketing_menu_keyboard()
     )
     await callback.answer()
 
@@ -893,7 +870,7 @@ async def share_post(callback: types.CallbackQuery, state: FSMContext):
     if not response:
         await callback.answer("⚠️ Данных нет", show_alert=True)
         return
-    await callback.message.answer(f"📤 **Ваш пост**\n\n{response}", parse_mode="HTML")
+    await callback.message.answer(f"📤 Ваш пост\n\n{response}")
     await callback.answer()
 
 
@@ -904,10 +881,9 @@ async def enter_image(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(ImageStates.menu)
     await message.answer(
-        "🖼 **Генерация изображения**\n\n"
-        "**Шаг 1 из 4**\nЧто нужно изобразить?",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        "🖼 Генерация изображения\n\n"
+        "Шаг 1 из 4\nЧто нужно изобразить?",
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -919,9 +895,8 @@ async def image_description(message: types.Message, state: FSMContext):
     await state.update_data(description=message.text)
     await state.set_state(ImageStates.purpose)
     await message.answer(
-        "**Шаг 2 из 4**\nДля чего изображение?",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        "Шаг 2 из 4\nДля чего изображение?",
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -933,9 +908,8 @@ async def image_purpose(message: types.Message, state: FSMContext):
     await state.update_data(purpose=message.text)
     await state.set_state(ImageStates.style)
     await message.answer(
-        "**Шаг 3 из 4**\nВыберите стиль:",
-        reply_markup=get_image_style_keyboard(),
-        parse_mode="HTML"
+        "Шаг 3 из 4\nВыберите стиль:",
+        reply_markup=get_image_style_keyboard()
     )
 
 
@@ -951,9 +925,8 @@ async def image_style(message: types.Message, state: FSMContext):
     await state.update_data(style=message.text)
     await state.set_state(ImageStates.size)
     await message.answer(
-        "**Шаг 4 из 4**\nВыберите размер:",
-        reply_markup=get_image_size_keyboard(),
-        parse_mode="HTML"
+        "Шаг 4 из 4\nВыберите размер:",
+        reply_markup=get_image_size_keyboard()
     )
 
 
@@ -983,7 +956,7 @@ async def generate_image_result(message: types.Message, state: FSMContext):
         message,
         state,
         result,
-        "🖼 **Ваше изображение готово!**",
+        "🖼 Ваше изображение готово!",
         get_image_result_keyboard()
     )
 
@@ -1016,11 +989,10 @@ async def enter_assistant(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(AssistantStates.menu)
     await message.answer(
-        "🤖 **AI Ассистент**\n\n"
+        "🤖 AI Ассистент\n\n"
         "Напишите ваш вопрос или задачу.\n"
         "Я помогу с любым вопросом!",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -1066,7 +1038,7 @@ async def generate_assistant(message: types.Message, state: FSMContext):
             message,
             state,
             result,
-            "🤖 **AI Ассистент**",
+            "🤖 AI Ассистент",
             None
         )
 
@@ -1092,11 +1064,9 @@ async def enter_marketplace(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(MarketplaceStates.menu)
     await message.answer(
-        "🛒 **Маркетплейсы**\n\n"
-        "**Шаг 1 из 4**\n"
-        "Выберите площадку:",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        "🛒 Маркетплейсы\n\n"
+        "Шаг 1 из 4\nВыберите площадку:",
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -1108,16 +1078,14 @@ async def marketplace_platform(message: types.Message, state: FSMContext):
     await state.update_data(platform=message.text)
     await state.set_state(MarketplaceStates.task)
     await message.answer(
-        "**Шаг 2 из 4**\n"
-        "Что нужно сделать?\n\n"
+        "Шаг 2 из 4\nЧто нужно сделать?\n\n"
         "Примеры:\n"
         "• создать карточку товара\n"
         "• написать описание\n"
         "• улучшить название\n"
         "• сделать SEO-текст\n"
         "• ответить клиенту",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -1129,10 +1097,8 @@ async def marketplace_task(message: types.Message, state: FSMContext):
     await state.update_data(task=message.text)
     await state.set_state(MarketplaceStates.category)
     await message.answer(
-        "**Шаг 3 из 4**\n"
-        "Категория товара?",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        "Шаг 3 из 4\nКатегория товара?",
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -1144,10 +1110,8 @@ async def marketplace_category(message: types.Message, state: FSMContext):
     await state.update_data(category=message.text)
     await state.set_state(MarketplaceStates.product_info)
     await message.answer(
-        "**Шаг 4 из 4**\n"
-        "Информация о товаре:",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
+        "Шаг 4 из 4\nИнформация о товаре:",
+        reply_markup=get_back_to_menu_keyboard()
     )
 
 
@@ -1187,7 +1151,7 @@ async def generate_marketplace(message: types.Message, state: FSMContext):
             message,
             state,
             result,
-            "🛒 **Результат**",
+            "🛒 Результат",
             None
         )
 
@@ -1226,24 +1190,24 @@ async def user_cabinet(message: types.Message, state: FSMContext):
 
     end_date = await get_subscription_end_date(message.from_user.id)
 
-    text = f"👤 **Ваш кабинет**\n\n"
-    text += f"📊 **Тариф:** {tariff.get('name', 'FREE')}\n"
-    text += f"💳 **Стоимость:** {tariff.get('price', 0)} ₽ / {tariff.get('period', 'месяц')}\n"
+    text = f"👤 Ваш кабинет\n\n"
+    text += f"📊 Тариф: {tariff.get('name', 'FREE')}\n"
+    text += f"💳 Стоимость: {tariff.get('price', 0)} ₽ / {tariff.get('period', 'месяц')}\n"
 
     if end_date:
         text += f"📅 Активен до: {end_date.strftime('%d.%m.%Y')}\n"
     else:
         text += f"📅 Бессрочный (FREE)\n"
 
-    text += f"\n📝 **Тексты:**\n"
+    text += f"\n📝 Тексты:\n"
     text += f"  Использовано: {text_used} / {text_limit}\n"
     text += f"  Осталось: {text_remaining}\n\n"
 
-    text += f"🖼 **Изображения:**\n"
+    text += f"🖼 Изображения:\n"
     text += f"  Использовано: {image_used} / {image_limit}\n"
     text += f"  Осталось: {image_remaining}\n\n"
 
-    text += f"📅 **Доступные инструменты:**\n"
+    text += f"📅 Доступные инструменты:\n"
     text += f"  ✅ Продажи\n"
     text += f"  ✅ Маркетинг\n"
     text += f"  ✅ Изображения\n"
@@ -1252,7 +1216,7 @@ async def user_cabinet(message: types.Message, state: FSMContext):
 
     text += f"💎 Для смены тарифа нажмите «Тарифы»"
 
-    await message.answer(text, parse_mode="HTML")
+    await message.answer(text)
 
 
 # ==================== ТАРИФЫ ====================
@@ -1261,11 +1225,11 @@ async def user_cabinet(message: types.Message, state: FSMContext):
 async def show_tariffs(message: types.Message, state: FSMContext):
     await state.clear()
 
-    text = "🚀 **ШТАБ AI — Тарифы**\n\n"
+    text = "🚀 ШТАБ AI — Тарифы\n\n"
     text += "Выберите подходящий тариф:\n\n"
 
     for tariff_id, tariff in get_all_tariffs().items():
-        text += f"{tariff['color']} **{tariff['name']}**\n"
+        text += f"{tariff['color']} {tariff['name']}\n"
         text += f"   💰 {tariff['price']} ₽ / {tariff['period']}\n"
         text += f"   📝 {tariff['text_limit']} текстов / день\n"
         text += f"   🖼 {tariff['image_limit']} изображений / день\n"
@@ -1273,8 +1237,7 @@ async def show_tariffs(message: types.Message, state: FSMContext):
 
     await message.answer(
         text,
-        reply_markup=get_tariffs_keyboard(),
-        parse_mode="HTML"
+        reply_markup=get_tariffs_keyboard()
     )
 
 
@@ -1287,31 +1250,28 @@ async def tariff_selected(callback: types.CallbackQuery, state: FSMContext):
         current_tariff = await get_user_tariff(callback.from_user.id)
         if current_tariff.value == "free":
             await callback.message.edit_text(
-                "⚪ **FREE**\n\n"
+                "⚪ FREE\n\n"
                 "Бесплатный тариф уже активен!\n\n"
                 "📝 3 текста / день\n"
-                "🖼 1 изображение / день",
-                parse_mode="HTML"
+                "🖼 1 изображение / день"
             )
         else:
             await callback.message.edit_text(
-                "⚪ **FREE**\n\n"
+                "⚪ FREE\n\n"
                 "Бесплатный тариф доступен всем новым пользователям.\n"
                 "Вы можете перейти на FREE в любой момент.\n\n"
                 "📝 3 текста / день\n"
-                "🖼 1 изображение / день",
-                parse_mode="HTML"
+                "🖼 1 изображение / день"
             )
         await callback.answer()
         return
 
     await callback.message.edit_text(
-        f"💎 **{tariff['name']}** — {tariff['price']} ₽ / {tariff['period']}\n\n"
+        f"💎 {tariff['name']} — {tariff['price']} ₽ / {tariff['period']}\n\n"
         f"📝 {tariff['text_limit']} текстов / день\n"
         f"🖼 {tariff['image_limit']} изображений / день\n\n"
         f"🚧 Оплата будет доступна в ближайшее время.\n"
-        f"Способы оплаты: Telegram Stars, ЮKassa",
-        parse_mode="HTML"
+        f"Способы оплаты: Telegram Stars, ЮKassa"
     )
     await callback.answer()
 
@@ -1327,16 +1287,16 @@ async def admin_panel(message: types.Message):
     from admin import get_admin_stats
     stats = await get_admin_stats()
 
-    text = "📊 **ШТАБ AI — Админ панель**\n\n"
-    text += f"👥 **Пользователей:** {stats['total']}\n"
+    text = "📊 ШТАБ AI — Админ панель\n\n"
+    text += f"👥 Пользователей: {stats['total']}\n"
     text += f"  ⚪ FREE: {stats.get('free', 0)}\n"
     text += f"  🟢 LITE: {stats.get('lite', 0)}\n"
     text += f"  🔵 PRO: {stats.get('pro', 0)}\n"
     text += f"  🟣 BUSINESS: {stats.get('business', 0)}\n\n"
-    text += f"💰 **Расход AI:** {stats['ai_cost']:.2f} ₽\n"
-    text += f"💳 **Доход:** {stats['revenue']:.2f} ₽"
+    text += f"💰 Расход AI: {stats['ai_cost']:.2f} ₽\n"
+    text += f"💳 Доход: {stats['revenue']:.2f} ₽"
 
-    await message.answer(text, parse_mode="HTML")
+    await message.answer(text)
 
 
 # ==================== ОБЩИЙ НАЗАД ====================
@@ -1396,23 +1356,23 @@ async def back_to_main(message: types.Message, state: FSMContext):
     if current in sales_states:
         await state.clear()
         await state.set_state(SalesStates.menu)
-        await message.answer("📊 **Продажи**", reply_markup=get_sales_menu_keyboard(), parse_mode="HTML")
+        await message.answer("📊 Продажи", reply_markup=get_sales_menu_keyboard())
     elif current in marketing_states:
         await state.clear()
         await state.set_state(MarketingStates.menu)
-        await message.answer("📊 **Маркетинг**", reply_markup=get_marketing_menu_keyboard(), parse_mode="HTML")
+        await message.answer("📊 Маркетинг", reply_markup=get_marketing_menu_keyboard())
     elif current in image_states:
         await state.clear()
         await state.set_state(ImageStates.menu)
-        await message.answer("🖼 **Изображения**", reply_markup=get_images_menu_keyboard(), parse_mode="HTML")
+        await message.answer("🖼 Изображения", reply_markup=get_images_menu_keyboard())
     elif current in marketplace_states:
         await state.clear()
         await state.set_state(MarketplaceStates.menu)
-        await message.answer("🛒 **Маркетплейсы**", reply_markup=get_back_to_menu_keyboard(), parse_mode="HTML")
+        await message.answer("🛒 Маркетплейсы", reply_markup=get_back_to_menu_keyboard())
     elif current in assistant_states:
         await state.clear()
         await state.set_state(AssistantStates.menu)
-        await message.answer("🤖 **AI Ассистент**", reply_markup=get_back_to_menu_keyboard(), parse_mode="HTML")
+        await message.answer("🤖 AI Ассистент", reply_markup=get_back_to_menu_keyboard())
     else:
         await state.clear()
         await message.answer("👋 Главное меню", reply_markup=get_main_menu())

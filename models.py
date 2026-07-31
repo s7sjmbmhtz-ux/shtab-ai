@@ -135,7 +135,7 @@ class VideoGenerationData(BaseModel):
     """Данные для генерации видео."""
     prompt: str
     model: VideoModel
-    duration: int = 5  # секунды
+    duration: int = 5
     photo_file_id: Optional[str] = None
     resolution: str = "1080p"
     aspect_ratio: str = "16:9"
@@ -158,6 +158,52 @@ class Tariff(str, Enum):
     LITE = "lite"
     PRO = "pro"
     BUSINESS = "business"
+
+
+# ============================================================
+# TOKEN PACKAGES
+# ============================================================
+
+class TokenPackage(BaseModel):
+    """Пакет токенов для покупки."""
+    id: str
+    name: str
+    tokens: int
+    price: float
+    currency: str = "RUB"
+    bonus: int = 0
+    popular: bool = False
+
+
+# ============================================================
+# PAYMENT
+# ============================================================
+
+class PaymentProvider(str, Enum):
+    YOOKASSA = "yookassa"
+    TELEGRAM_STARS = "telegram_stars"
+
+
+class PaymentStatus(str, Enum):
+    PENDING = "pending"
+    SUCCESS = "success"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class Payment(BaseModel):
+    id: Optional[int] = None
+    user_id: int
+    provider: PaymentProvider
+    amount: float
+    currency: str = "RUB"
+    status: PaymentStatus = PaymentStatus.PENDING
+    payment_id: Optional[str] = None
+    tariff_id: Optional[str] = None
+    token_package_id: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    created_at: Optional[datetime] = None
+    paid_at: Optional[datetime] = None
 
 
 # ============================================================
@@ -496,7 +542,6 @@ class Validator(Protocol):
 
 @dataclass(slots=True)
 class ToolDefinition:
-    # ===== ОБЯЗАТЕЛЬНЫЕ ПОЛЯ (БЕЗ DEFAULT) =====
     id: str
     name: str
     icon: str
@@ -504,8 +549,6 @@ class ToolDefinition:
     category: Category
     workflow: Workflow
     prompt_builder_id: str
-    
-    # ===== ПОЛЯ С DEFAULT =====
     version: str = "1.0"
     daily_limit: int = 3
     section: str = ""
@@ -574,7 +617,7 @@ class User(BaseModel):
     first_name: Optional[str] = None
     tariff: str = "free"
     is_admin: bool = False
-    tokens: int = 0  # Добавлено поле для токенов
+    tokens: int = 0
     created_at: Optional[datetime] = None
     last_activity: Optional[datetime] = None
 
@@ -609,23 +652,3 @@ class Subscription(BaseModel):
     start_date: datetime
     end_date: Optional[datetime] = None
     status: str = "active"
-
-
-# ============================================================
-# PAYMENT
-# ============================================================
-
-class PaymentProvider(str, Enum):
-    YOOKASSA = "yookassa"
-    TELEGRAM_STARS = "telegram_stars"
-
-
-class Payment(BaseModel):
-    id: Optional[int] = None
-    user_id: int
-    provider: PaymentProvider
-    amount: float
-    currency: str = "RUB"
-    status: str = "pending"
-    payment_id: Optional[str] = None
-    created_at: datetime

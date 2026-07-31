@@ -1734,15 +1734,15 @@ async def generate_video(message: types.Message, state: FSMContext):
         tokens = await get_user_tokens_balance(user_id)
         
         if tokens < required_tokens:
-await message.answer(
-    f"❌ Недостаточно токенов.\n\n"
-    f"🎯 Модель: {model.get('name', '...')}\n"
-    f"⏱️ Длительность: {duration} сек\n"
-    f"💰 Нужно: {required_tokens} токенов\n"
-    f"💳 У вас: {tokens} токенов\n\n"
-    f"Пополните баланс через «💳 Купить кредиты»",
-    parse_mode=None
-)
+            await message.answer(
+                f"❌ Недостаточно токенов.\n\n"
+                f"🎯 Модель: {model.get('name', '...')}\n"
+                f"⏱️ Длительность: {duration} сек\n"
+                f"💰 Нужно: {required_tokens} токенов\n"
+                f"💳 У вас: {tokens} токенов\n\n"
+                f"Пополните баланс через «💳 Купить кредиты»",
+                parse_mode=None
+            )
             return
     
     # ==================== СПИСАНИЕ ТОКЕНОВ ====================
@@ -1823,10 +1823,10 @@ await message.answer(
             await token_repository.refund_tokens(user_id, required_tokens, f"Возврат за ошибку видео")
         
         await message.answer(
-    f"❌ Ошибка при генерации видео: {str(e)}" + 
-    ("" if is_admin(user_id) else " Токены возвращены."),
-    parse_mode=None
-)
+            f"❌ Ошибка при генерации видео: {str(e)}" + 
+            ("" if is_admin(user_id) else " Токены возвращены."),
+            parse_mode=None
+        )
     
     finally:
         await loading.delete()

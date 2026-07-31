@@ -52,11 +52,13 @@ class TextProvider(AIProvider):
             "temperature": temperature
         }
 
+        timeout = getattr(settings, 'AI_TIMEOUT', 120)
+
         response = await self.client.post(
             f"{self.base_url}/chat/completions",
             headers=headers,
             json=payload,
-            timeout=settings.AI_TIMEOUT
+            timeout=timeout
         )
         response.raise_for_status()
         data = response.json()
@@ -130,11 +132,13 @@ class ImageProvider(AIProvider):
             "n": 1
         }
 
+        timeout = getattr(settings, 'AI_TIMEOUT', 120)
+
         response = await self.client.post(
             f"{self.base_url}/images/generations",
             headers=headers,
             json=payload,
-            timeout=settings.AI_TIMEOUT
+            timeout=timeout
         )
         response.raise_for_status()
         return response.json()
@@ -195,6 +199,25 @@ class ImageProvider(AIProvider):
 
 
 # ============================================================
+# AUDIO PROVIDER (заглушка)
+# ============================================================
+
+class AudioProvider(AIProvider):
+    def __init__(self, client: httpx.AsyncClient):
+        self.client = client
+
+    async def generate(self, prompt: str = "", **kwargs) -> AIResponse:
+        return AIResponse(
+            content="",
+            provider="audio",
+            model="none",
+            status=GenerationStatus.NOT_IMPLEMENTED,
+            response_type=ResponseType.AUDIO,
+            metadata={"error": "Audio генерация пока не реализована"}
+        )
+
+
+# ============================================================
 # AISERVICE (ФАСАД)
 # ============================================================
 
@@ -208,6 +231,7 @@ class AIService:
         self._providers = {
             "text": TextProvider(self.client),
             "image": ImageProvider(self.client),
+            "audio": AudioProvider(self.client),
         }
 
     async def generate(

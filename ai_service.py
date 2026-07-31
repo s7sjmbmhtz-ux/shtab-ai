@@ -215,6 +215,7 @@ class VideoProvider(AIProvider):
         }
         
         payload = {
+            "model": model,
             "prompt": prompt,
             "duration": kwargs.get("duration", 5),
             "size": kwargs.get("size", "1280x720"),
@@ -229,11 +230,7 @@ class VideoProvider(AIProvider):
 
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
 
-        # ============================================================
-        # ПРАВИЛЬНЫЙ ЭНДПОИНТ ДЛЯ GenAPI
-        # ============================================================
-        # model — это api_model из VIDEO_MODELS (например: ltx-video, cogvideox, kling-v1, etc.)
-        url = f"{self.base_url}/api/v1/networks/{model}"
+        url = f"{self.base_url}/video/generations"
         logger.info(f"📤 Video API запрос: {url}")
         logger.info(f"📤 Payload: {payload}")
 

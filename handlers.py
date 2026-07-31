@@ -50,6 +50,7 @@ router = Router()
 
 class SalesStates(StatesGroup):
     menu = State()
+    # Скрипт продаж
     script_product = State()
     script_client = State()
     script_average_check = State()
@@ -57,6 +58,24 @@ class SalesStates(StatesGroup):
     script_objections = State()
     script_result = State()
     script_refinement = State()
+    # Коммерческое предложение
+    cp_company = State()
+    cp_client = State()
+    cp_product = State()
+    cp_problem = State()
+    cp_price = State()
+    cp_result = State()
+    # Ответ клиенту
+    reply_question = State()
+    reply_context = State()
+    reply_result = State()
+    # Анализ переписки
+    analysis_text = State()
+    analysis_result = State()
+    # Работа с возражениями
+    objection_product = State()
+    objection_list = State()
+    objection_result = State()
 
 
 class MarketingStates(StatesGroup):
@@ -152,6 +171,8 @@ async def enter_sales(message: types.Message, state: FSMContext):
         parse_mode="HTML"
     )
 
+
+# ========== СКРИПТ ПРОДАЖ ==========
 
 @router.message(F.text == "📞 Скрипт продаж")
 async def start_script(message: types.Message, state: FSMContext):
@@ -268,6 +289,374 @@ async def generate_script(message: types.Message, state: FSMContext):
 
 
 async def cancel_script(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(SalesStates.menu)
+    await message.answer("❌ Отменено.", reply_markup=get_sales_menu_keyboard())
+
+
+# ========== КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ ==========
+
+@router.message(F.text == "📑 Коммерческое предложение")
+async def start_cp(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(SalesStates.cp_company)
+    await message.answer(
+        "📑 **Создание коммерческого предложения**\n\n"
+        "**Шаг 1 из 5**\n"
+        "Название вашей компании:",
+        reply_markup=get_back_to_menu_keyboard(),
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(SalesStates.cp_company))
+async def cp_company(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_cp(message, state)
+        return
+    await state.update_data(company=message.text)
+    await state.set_state(SalesStates.cp_client)
+    await message.answer(
+        "**Шаг 2 из 5**\n"
+        "Кто ваш клиент (компания/должность)?",
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(SalesStates.cp_client))
+async def cp_client(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_cp(message, state)
+        return
+    await state.update_data(client=message.text)
+    await state.set_state(SalesStates.cp_product)
+    await message.answer(
+        "**Шаг 3 из 5**\n"
+        "Что вы предлагаете? (продукт/услуга)",
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(SalesStates.cp_product))
+async def cp_product(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_cp(message, state)
+        return
+    await state.update_data(product=message.text)
+    await state.set_state(SalesStates.cp_problem)
+    await message.answer(
+        "**Шаг 4 из 5**\n"
+        "Какую проблему решает ваш продукт?",
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(SalesStates.cp_problem))
+async def cp_problem(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_cp(message, state)
+        return
+    await state.update_data(problem=message.text)
+    await state.set_state(SalesStates.cp_price)
+    await message.answer(
+        "**Шаг 5 из 5**\n"
+        "Стоимость (или ценовой диапазон):",
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(SalesStates.cp_price))
+async def cp_price(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_cp(message, state)
+        return
+    await state.update_data(price=message.text)
+    await generate_cp(message, state)
+
+
+async def generate_cp(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    required = ["company", "client", "product", "problem", "price"]
+    if any(f not in data for f in required):
+        await message.answer("⚠️ Заполните все шаги.")
+        return
+
+    loading = await message.answer("📑 Генерирую коммерческое предложение...")
+
+    try:
+        result = await execute_tool(
+            tool_id=ToolIds.SALES_SCRIPT,
+            user_id=message.from_user.id,
+            input_data={"type": "commercial_proposal", **data},
+            session=None,
+            mode="initial"
+        )
+
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+
+        await send_pipeline_result(
+            message,
+            state,
+            result,
+            "📑 **Ваше коммерческое предложение готово!**",
+            None
+        )
+
+    except Exception as e:
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        logger.error(f"Ошибка генерации КП: {e}")
+        await message.answer("❌ Ошибка. Попробуйте позже.")
+
+
+async def cancel_cp(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(SalesStates.menu)
+    await message.answer("❌ Отменено.", reply_markup=get_sales_menu_keyboard())
+
+
+# ========== ОТВЕТ КЛИЕНТУ ==========
+
+@router.message(F.text == "💬 Ответ клиенту")
+async def start_reply(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(SalesStates.reply_question)
+    await message.answer(
+        "💬 **Ответ клиенту**\n\n"
+        "**Шаг 1 из 2**\n"
+        "Что спрашивает клиент? (опишите вопрос или ситуацию)",
+        reply_markup=get_back_to_menu_keyboard(),
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(SalesStates.reply_question))
+async def reply_question(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_reply(message, state)
+        return
+    await state.update_data(question=message.text)
+    await state.set_state(SalesStates.reply_context)
+    await message.answer(
+        "**Шаг 2 из 2**\n"
+        "Дополнительный контекст (необязательно):\n"
+        "Например: какой товар, какая цена, какие были предыдущие сообщения",
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(SalesStates.reply_context))
+async def reply_context(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_reply(message, state)
+        return
+    await state.update_data(context=message.text)
+    await generate_reply(message, state)
+
+
+async def generate_reply(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+
+    loading = await message.answer("💬 Генерирую ответ...")
+
+    try:
+        result = await execute_tool(
+            tool_id=ToolIds.SALES_SCRIPT,
+            user_id=message.from_user.id,
+            input_data={"type": "client_reply", **data},
+            session=None,
+            mode="initial"
+        )
+
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+
+        await send_pipeline_result(
+            message,
+            state,
+            result,
+            "💬 **Готовый ответ клиенту:**",
+            None
+        )
+
+    except Exception as e:
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        logger.error(f"Ошибка генерации ответа: {e}")
+        await message.answer("❌ Ошибка. Попробуйте позже.")
+
+
+async def cancel_reply(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(SalesStates.menu)
+    await message.answer("❌ Отменено.", reply_markup=get_sales_menu_keyboard())
+
+
+# ========== АНАЛИЗ ПЕРЕПИСКИ ==========
+
+@router.message(F.text == "📊 Анализ переписки")
+async def start_analysis(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(SalesStates.analysis_text)
+    await message.answer(
+        "📊 **Анализ переписки**\n\n"
+        "Вставьте текст переписки (диалог с клиентом) для анализа.\n\n"
+        "Я выявлю:\n"
+        "• Качество обработки возражений\n"
+        "• Эффективность вопросов\n"
+        "• Точки роста\n"
+        "• Рекомендации по улучшению",
+        reply_markup=get_back_to_menu_keyboard(),
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(SalesStates.analysis_text))
+async def analysis_text(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_analysis(message, state)
+        return
+    
+    if len(message.text) < 10:
+        await message.answer("❌ Текст слишком короткий. Отправьте диалог (минимум 10 символов).")
+        return
+    
+    await state.update_data(text=message.text)
+    await generate_analysis(message, state)
+
+
+async def generate_analysis(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    text = data.get("text", "")
+
+    loading = await message.answer("📊 Анализирую переписку...")
+
+    try:
+        result = await execute_tool(
+            tool_id=ToolIds.SALES_SCRIPT,
+            user_id=message.from_user.id,
+            input_data={"type": "analysis", "text": text},
+            session=None,
+            mode="initial"
+        )
+
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+
+        await send_pipeline_result(
+            message,
+            state,
+            result,
+            "📊 **Анализ переписки готов!**",
+            None
+        )
+
+    except Exception as e:
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        logger.error(f"Ошибка анализа: {e}")
+        await message.answer("❌ Ошибка. Попробуйте позже.")
+
+
+async def cancel_analysis(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(SalesStates.menu)
+    await message.answer("❌ Отменено.", reply_markup=get_sales_menu_keyboard())
+
+
+# ========== РАБОТА С ВОЗРАЖЕНИЯМИ ==========
+
+@router.message(F.text == "🛡️ Работа с возражениями")
+async def start_objections(message: types.Message, state: FSMContext):
+    await state.clear()
+    await state.set_state(SalesStates.objection_product)
+    await message.answer(
+        "🛡️ **Работа с возражениями**\n\n"
+        "**Шаг 1 из 2**\n"
+        "Что вы продаёте?",
+        reply_markup=get_back_to_menu_keyboard(),
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(SalesStates.objection_product))
+async def objection_product(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_objections(message, state)
+        return
+    await state.update_data(product=message.text)
+    await state.set_state(SalesStates.objection_list)
+    await message.answer(
+        "**Шаг 2 из 2**\n"
+        "Какие возражения вы слышите?\n"
+        "Перечислите через запятую или каждое с новой строки",
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(SalesStates.objection_list))
+async def objection_list(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        await cancel_objections(message, state)
+        return
+    await state.update_data(objections=message.text)
+    await generate_objections(message, state)
+
+
+async def generate_objections(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    required = ["product", "objections"]
+    if any(f not in data for f in required):
+        await message.answer("⚠️ Заполните все шаги.")
+        return
+
+    loading = await message.answer("🛡️ Готовлю ответы на возражения...")
+
+    try:
+        result = await execute_tool(
+            tool_id=ToolIds.SALES_SCRIPT,
+            user_id=message.from_user.id,
+            input_data={"type": "objections", **data},
+            session=None,
+            mode="initial"
+        )
+
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+
+        await send_pipeline_result(
+            message,
+            state,
+            result,
+            "🛡️ **Готовые ответы на возражения:**",
+            None
+        )
+
+    except Exception as e:
+        try:
+            await loading.delete()
+        except Exception:
+            pass
+        logger.error(f"Ошибка генерации ответов на возражения: {e}")
+        await message.answer("❌ Ошибка. Попробуйте позже.")
+
+
+async def cancel_objections(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(SalesStates.menu)
     await message.answer("❌ Отменено.", reply_markup=get_sales_menu_keyboard())
@@ -934,7 +1323,21 @@ async def back_to_main(message: types.Message, state: FSMContext):
         SalesStates.script_average_check,
         SalesStates.script_format,
         SalesStates.script_objections,
-        SalesStates.script_result
+        SalesStates.script_result,
+        SalesStates.cp_company,
+        SalesStates.cp_client,
+        SalesStates.cp_product,
+        SalesStates.cp_problem,
+        SalesStates.cp_price,
+        SalesStates.cp_result,
+        SalesStates.reply_question,
+        SalesStates.reply_context,
+        SalesStates.reply_result,
+        SalesStates.analysis_text,
+        SalesStates.analysis_result,
+        SalesStates.objection_product,
+        SalesStates.objection_list,
+        SalesStates.objection_result,
     ]
     marketing_states = [
         MarketingStates.post_product,

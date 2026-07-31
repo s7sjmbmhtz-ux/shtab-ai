@@ -19,7 +19,7 @@ from models import (
 from tools import prompt_registry, PromptContext, PromptMode
 from tool_ids import ToolNames
 from ai_service import ai_service
-from database import user_repository, request_repository, limit_repository
+from database import user_repository, request_repository, limit_repository, token_repository
 from keyboards import (
     get_main_menu, get_sales_menu_keyboard, get_marketing_menu_keyboard,
     get_images_menu_keyboard, get_communication_format_keyboard,
@@ -46,9 +46,10 @@ from response_helpers import send_pipeline_result
 from tool_ids import ToolNames as ToolIds
 from admin import is_admin
 from services.subscription_service import (
-    get_user_tariff, set_user_tariff, get_user_limit, get_subscription_end_date
+    get_user_tariff, set_user_tariff, get_user_limit, get_subscription_end_date,
+    get_user_tokens_balance, deduct_tokens_with_check
 )
-from services.usage_service import get_user_usage_today, track_usage
+from services.usage_service import get_user_usage_today, track_usage, check_and_consume_limit
 from tariffs import get_tariff, get_all_tariffs
 
 router = Router()
@@ -128,7 +129,6 @@ VIDEO_MODELS = {
 
 class SalesStates(StatesGroup):
     menu = State()
-    # Скрипт продаж
     script_product = State()
     script_client = State()
     script_average_check = State()
@@ -136,21 +136,17 @@ class SalesStates(StatesGroup):
     script_objections = State()
     script_result = State()
     script_refinement = State()
-    # Коммерческое предложение
     cp_company = State()
     cp_client = State()
     cp_product = State()
     cp_problem = State()
     cp_price = State()
     cp_result = State()
-    # Ответ клиенту
     reply_question = State()
     reply_context = State()
     reply_result = State()
-    # Анализ переписки
     analysis_text = State()
     analysis_result = State()
-    # Работа с возражениями
     objection_product = State()
     objection_list = State()
     objection_result = State()
@@ -158,34 +154,28 @@ class SalesStates(StatesGroup):
 
 class MarketingStates(StatesGroup):
     menu = State()
-    # Продающий пост
     post_product = State()
     post_audience = State()
     post_platform = State()
     post_style = State()
     post_result = State()
     post_refinement = State()
-    # Контент-план
     content_plan_niche = State()
     content_plan_audience = State()
     content_plan_platform = State()
     content_plan_result = State()
-    # Рекламный оффер
     offer_product = State()
     offer_benefit = State()
     offer_audience = State()
     offer_result = State()
-    # Email-рассылка
     email_topic = State()
     email_audience = State()
     email_goal = State()
     email_result = State()
-    # УТП
     utp_product = State()
     utp_competitors = State()
     utp_benefit = State()
     utp_result = State()
-    # Анализ ЦА
     audience_product = State()
     audience_details = State()
     audience_result = State()
@@ -283,8 +273,6 @@ async def enter_sales(message: types.Message, state: FSMContext):
         reply_markup=get_sales_menu_keyboard()
     )
 
-
-# ========== СКРИПТ ПРОДАЖ ==========
 
 @router.message(F.text == "📞 Скрипт продаж")
 async def start_script(message: types.Message, state: FSMContext):
@@ -403,8 +391,6 @@ async def cancel_script(message: types.Message, state: FSMContext):
     await message.answer("❌ Отменено.", reply_markup=get_sales_menu_keyboard())
 
 
-# ========== КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ ==========
-
 @router.message(F.text == "📑 Коммерческое предложение")
 async def start_cp(message: types.Message, state: FSMContext):
     await state.clear()
@@ -518,8 +504,6 @@ async def cancel_cp(message: types.Message, state: FSMContext):
     await message.answer("❌ Отменено.", reply_markup=get_sales_menu_keyboard())
 
 
-# ========== ОТВЕТ КЛИЕНТУ ==========
-
 @router.message(F.text == "💬 Ответ клиенту")
 async def start_reply(message: types.Message, state: FSMContext):
     await state.clear()
@@ -601,8 +585,6 @@ async def cancel_reply(message: types.Message, state: FSMContext):
     await state.set_state(SalesStates.menu)
     await message.answer("❌ Отменено.", reply_markup=get_sales_menu_keyboard())
 
-
-# ========== АНАЛИЗ ПЕРЕПИСКИ ==========
 
 @router.message(F.text == "📊 Анализ переписки")
 async def start_analysis(message: types.Message, state: FSMContext):
@@ -712,8 +694,6 @@ async def cancel_analysis(message: types.Message, state: FSMContext):
     await message.answer("❌ Отменено.", reply_markup=get_sales_menu_keyboard())
 
 
-# ========== РАБОТА С ВОЗРАЖЕНИЯМИ ==========
-
 @router.message(F.text == "🛡️ Работа с возражениями")
 async def start_objections(message: types.Message, state: FSMContext):
     await state.clear()
@@ -819,8 +799,6 @@ async def sales_menu(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-# ==================== ВОЗВРАТ В ГЛАВНОЕ МЕНЮ ИЗ МЕНЮ РАЗДЕЛОВ ====================
-
 @router.message(StateFilter(SalesStates.menu), F.text == "⬅️ Назад")
 async def back_from_sales_menu(message: types.Message, state: FSMContext):
     await state.clear()
@@ -868,8 +846,6 @@ async def enter_marketing(message: types.Message, state: FSMContext):
         reply_markup=get_marketing_menu_keyboard()
     )
 
-
-# ========== ПРОДАЮЩИЙ ПОСТ ==========
 
 @router.message(F.text == "📝 Продающий пост")
 async def start_post(message: types.Message, state: FSMContext):
@@ -979,8 +955,6 @@ async def cancel_post(message: types.Message, state: FSMContext):
     await message.answer("❌ Отменено.", reply_markup=get_marketing_menu_keyboard())
 
 
-# ========== КОНТЕНТ-ПЛАН ==========
-
 @router.message(F.text == "📅 Контент-план")
 async def start_content_plan(message: types.Message, state: FSMContext):
     await state.clear()
@@ -1054,8 +1028,6 @@ async def generate_content_plan(message: types.Message, state: FSMContext):
         logger.error(f"Ошибка: {e}")
         await message.answer("❌ Ошибка. Попробуйте позже.")
 
-
-# ========== РЕКЛАМНЫЙ ОФФЕР ==========
 
 @router.message(F.text == "🎯 Рекламный оффер")
 async def start_offer(message: types.Message, state: FSMContext):
@@ -1131,8 +1103,6 @@ async def generate_offer(message: types.Message, state: FSMContext):
         await message.answer("❌ Ошибка. Попробуйте позже.")
 
 
-# ========== EMAIL-РАССЫЛКА ==========
-
 @router.message(F.text == "📧 Email-рассылка")
 async def start_email(message: types.Message, state: FSMContext):
     await state.clear()
@@ -1206,8 +1176,6 @@ async def generate_email(message: types.Message, state: FSMContext):
         logger.error(f"Ошибка: {e}")
         await message.answer("❌ Ошибка. Попробуйте позже.")
 
-
-# ========== УТП ==========
 
 @router.message(F.text == "💎 УТП")
 async def start_utp(message: types.Message, state: FSMContext):
@@ -1283,8 +1251,6 @@ async def generate_utp(message: types.Message, state: FSMContext):
         await message.answer("❌ Ошибка. Попробуйте позже.")
 
 
-# ========== АНАЛИЗ ЦА ==========
-
 @router.message(F.text == "🔍 Анализ ЦА")
 async def start_audience_analysis(message: types.Message, state: FSMContext):
     await state.clear()
@@ -1348,8 +1314,6 @@ async def generate_audience_analysis(message: types.Message, state: FSMContext):
         logger.error(f"Ошибка: {e}")
         await message.answer("❌ Ошибка. Попробуйте позже.")
 
-
-# ========== ОТМЕНА ДЛЯ МАРКЕТИНГА ==========
 
 async def cancel_marketing_tool(message: types.Message, state: FSMContext):
     await state.clear()
@@ -1685,9 +1649,8 @@ async def generate_video(message: types.Message, state: FSMContext):
     price_per_second = model.get("price_per_second", 30)
     required_tokens = duration * price_per_second
     
-    # Проверяем баланс токенов
-    from database.user_repository import get_user_tokens, deduct_tokens
-    tokens = await get_user_tokens(user_id)
+    # Проверяем баланс токенов через новый сервис
+    tokens = await get_user_tokens_balance(user_id)
     
     if tokens < required_tokens:
         await message.answer(
@@ -1696,13 +1659,24 @@ async def generate_video(message: types.Message, state: FSMContext):
             f"⏱️ Длительность: {duration} сек\n"
             f"💰 Нужно: **{required_tokens}** токенов\n"
             f"💳 У вас: **{tokens}** токенов\n\n"
-            f"Пополните баланс в разделе 💎 Токены.",
+            f"Пополните баланс в разделе 💎 Тарифы.",
             parse_mode="HTML"
         )
         return
     
-    # Списываем токены
-    await deduct_tokens(user_id, required_tokens)
+    # Списываем токены через новый сервис
+    success = await deduct_tokens_with_check(
+        user_id, 
+        required_tokens, 
+        f"Генерация видео {duration} сек на {model.get('name', '...')}"
+    )
+    
+    if not success:
+        await message.answer(
+            "❌ Ошибка списания токенов. Попробуйте позже.",
+            parse_mode="HTML"
+        )
+        return
     
     loading = await message.answer(
         f"🎬 Генерирую видео ({duration} сек) на {model.get('name', '...')}...\n"
@@ -1729,8 +1703,8 @@ async def generate_video(message: types.Message, state: FSMContext):
         
     except Exception as e:
         # Возвращаем токены при ошибке
-        from database.user_repository import add_tokens
-        await add_tokens(user_id, required_tokens)
+        from database.token_repository import token_repository
+        await token_repository.refund_tokens(user_id, required_tokens, f"Возврат за ошибку видео")
         logger.error(f"Ошибка генерации видео: {e}")
         await message.answer(
             "❌ Ошибка при генерации видео. Токены возвращены.\n\n"
@@ -1970,6 +1944,9 @@ async def user_cabinet(message: types.Message, state: FSMContext):
 
     text_used = await get_user_usage_today(message.from_user.id, ResponseType.TEXT)
     image_used = await get_user_usage_today(message.from_user.id, ResponseType.IMAGE)
+    
+    # Получаем баланс токенов
+    tokens = await get_user_tokens_balance(message.from_user.id)
 
     text_limit = tariff.get("text_limit", 0)
     image_limit = tariff.get("image_limit", 0)
@@ -1982,6 +1959,7 @@ async def user_cabinet(message: types.Message, state: FSMContext):
     text = f"👤 Ваш кабинет\n\n"
     text += f"📊 Тариф: {tariff.get('name', 'FREE')}\n"
     text += f"💳 Стоимость: {tariff.get('price', 0)} ₽ / {tariff.get('period', 'месяц')}\n"
+    text += f"🪙 Токены: **{tokens}**\n"
 
     if end_date:
         text += f"📅 Активен до: {end_date.strftime('%d.%m.%Y')}\n"
@@ -2023,6 +2001,8 @@ async def show_tariffs(message: types.Message, state: FSMContext):
         text += f"   💰 {tariff['price']} ₽ / {tariff['period']}\n"
         text += f"   📝 {tariff['text_limit']} текстов / день\n"
         text += f"   🖼 {tariff['image_limit']} изображений / день\n"
+        text += f"   🎬 {tariff['video_limit']} видео / день\n"
+        text += f"   🪙 {tariff['tokens']} бонусных токенов\n"
         text += f"   {tariff['description']}\n\n"
 
     await message.answer(
@@ -2043,7 +2023,8 @@ async def tariff_selected(callback: types.CallbackQuery, state: FSMContext):
                 "⚪ FREE\n\n"
                 "Бесплатный тариф уже активен!\n\n"
                 "📝 3 текста / день\n"
-                "🖼 1 изображение / день"
+                "🖼 1 изображение / день\n"
+                "🪙 100 бонусных токенов"
             )
         else:
             await callback.message.edit_text(
@@ -2051,7 +2032,8 @@ async def tariff_selected(callback: types.CallbackQuery, state: FSMContext):
                 "Бесплатный тариф доступен всем новым пользователям.\n"
                 "Вы можете перейти на FREE в любой момент.\n\n"
                 "📝 3 текста / день\n"
-                "🖼 1 изображение / день"
+                "🖼 1 изображение / день\n"
+                "🪙 100 бонусных токенов"
             )
         await callback.answer()
         return
@@ -2059,7 +2041,9 @@ async def tariff_selected(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.edit_text(
         f"💎 {tariff['name']} — {tariff['price']} ₽ / {tariff['period']}\n\n"
         f"📝 {tariff['text_limit']} текстов / день\n"
-        f"🖼 {tariff['image_limit']} изображений / день\n\n"
+        f"🖼 {tariff['image_limit']} изображений / день\n"
+        f"🎬 {tariff['video_limit']} видео / день\n"
+        f"🪙 {tariff['tokens']} бонусных токенов\n\n"
         f"🚧 Оплата будет доступна в ближайшее время.\n"
         f"Способы оплаты: Telegram Stars, ЮKassa"
     )
@@ -2084,7 +2068,8 @@ async def admin_panel(message: types.Message):
     text += f"  🔵 PRO: {stats.get('pro', 0)}\n"
     text += f"  🟣 BUSINESS: {stats.get('business', 0)}\n\n"
     text += f"💰 Расход AI: {stats['ai_cost']:.2f} ₽\n"
-    text += f"💳 Доход: {stats['revenue']:.2f} ₽"
+    text += f"💳 Доход: {stats['revenue']:.2f} ₽\n"
+    text += f"🪙 Всего токенов: {stats.get('total_tokens', 0)}"
 
     await message.answer(text)
 

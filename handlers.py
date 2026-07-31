@@ -30,6 +30,8 @@ from keyboards import (
     get_editor_language_keyboard,
     get_back_to_menu_keyboard,
     get_tariffs_keyboard,
+    get_marketplace_platform_keyboard,
+    get_marketplace_task_keyboard,
     PLATFORM_MAP, STYLE_MAP, PURPOSE_MAP, IMAGE_STYLE_MAP, SIZE_MAP,
     OPERATION_MAP, LANGUAGE_MAP
 )
@@ -542,47 +544,27 @@ async def generate_analysis(message: types.Message, state: FSMContext):
         await message.answer("❌ Текст слишком короткий. Отправьте диалог (минимум 10 символов).")
         return
 
-    loading = await message.answer("📊 Анализирую переписку...")
+    loading = await message.answer("📊 Анализирую переписку... Это может занять до 30 секунд. Пожалуйста, подождите.")
 
     try:
-        # Формируем специальный промпт для анализа
+        # Ограничиваем текст для скорости
+        max_text_length = 1500
+        if len(text) > max_text_length:
+            text = text[:max_text_length] + "\n...(текст обрезан для анализа)"
+
         analysis_prompt = f"""
-Проанализируй эту переписку как эксперт по продажам.
+Проанализируй эту переписку как эксперт по продажам. Дай краткий, конкретный ответ без лишней воды.
 
 Переписка:
 {text}
 
-Выполни следующий анализ:
-
-1. Кто участники диалога? (кто продавец, кто клиент)
-
-2. Качество обработки возражений:
-   - Какие возражения выдвинул клиент?
-   - Как продавец на них отреагировал?
-   - Что можно было сделать лучше?
-
-3. Эффективность вопросов продавца:
-   - Какие вопросы задал продавец?
-   - Помогли ли они продвинуть сделку?
-   - Какие вопросы нужно было задать?
-
-4. Точки роста (ошибки продавца):
-   - Что продавец сделал неправильно?
-   - Какие фразы убили сделку?
-   - Где продавец упустил возможность?
-
-5. Рекомендации по улучшению:
-   - Конкретные фразы, которые нужно использовать
-   - Стратегия ответов на возражения
-   - Как довести диалог до сделки
-
-6. Оценка переписки (от 1 до 10):
-   - Поставь общую оценку качеству работы продавца
-
-Напиши ответ в виде структурированного отчёта. Будь конкретным, без общих фраз. Дай практические советы.
+1. Кто участники диалога?
+2. Какие ошибки допустил продавец? (конкретно, по пунктам)
+3. Что нужно было сказать вместо этого? (конкретные фразы)
+4. Оценка работы продавца (от 1 до 10):
+5. Один главный совет:
 """
 
-        # Вызываем AI напрямую через ai_service
         from ai_service import ai_service
         from models import ResponseType, GenerationStatus
         
@@ -606,14 +588,12 @@ async def generate_analysis(message: types.Message, state: FSMContext):
         # Очищаем текст от маркдауна
         content = ai_result.content
         
-        # Убираем **
         content = re.sub(r'\*\*(.+?)\*\*', r'\1', content)
         content = re.sub(r'\*(.+?)\*', r'\1', content)
         content = re.sub(r'^#+\s*(.+?)$', r'\1', content, flags=re.MULTILINE)
         content = re.sub(r'_{3,}', '', content)
         content = re.sub(r'-{3,}', '', content)
 
-        # Сохраняем в состояние
         await state.update_data(last_response=ai_result.content)
 
         await message.answer(
@@ -1129,7 +1109,6 @@ async def marketplace_platform(message: types.Message, state: FSMContext):
         await cancel_marketplace(message, state)
         return
     
-    # Проверяем, что выбрана площадка
     valid_platforms = ["🛍️ Wildberries", "🛒 Ozon", "📦 Яндекс.Маркет", "🛍️ AliExpress", "🌐 Другое"]
     if message.text not in valid_platforms:
         await message.answer("❌ Выберите площадку из кнопок.", reply_markup=get_marketplace_platform_keyboard())
@@ -1145,7 +1124,7 @@ async def marketplace_platform(message: types.Message, state: FSMContext):
         "• улучшить название\n"
         "• сделать SEO-текст\n"
         "• ответить клиенту",
-        reply_markup=get_marketplace_task_keyboard()  # ← новая клавиатура
+        reply_markup=get_marketplace_task_keyboard()
     )
 
 

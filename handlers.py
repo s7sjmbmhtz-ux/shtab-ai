@@ -1728,7 +1728,7 @@ async def get_video_duration(message: types.Message, state: FSMContext):
 
 
 async def generate_video(message: types.Message, state: FSMContext):
-    """Генерация видео."""
+    """Генерация видео через GenAPI."""
     data = await state.get_data()
     user_id = message.from_user.id
     
@@ -1741,12 +1741,10 @@ async def generate_video(message: types.Message, state: FSMContext):
     required_tokens = duration * price_per_second
     
     # ==================== ПРОВЕРКА ДЛЯ АДМИНА ====================
-    # Если админ — пропускаем проверку токенов
     if is_admin(user_id):
-        tokens = 999999  # Бесконечность для админа
+        tokens = 999999
         logger.info(f"👑 Админ {user_id} генерирует видео без списания токенов")
     else:
-        # Проверяем баланс токенов для обычных пользователей
         tokens = await get_user_tokens_balance(user_id)
         
         if tokens < required_tokens:
@@ -1762,7 +1760,6 @@ async def generate_video(message: types.Message, state: FSMContext):
             return
     
     # ==================== СПИСАНИЕ ТОКЕНОВ ====================
-    # Если НЕ админ — списываем токены
     if not is_admin(user_id):
         success = await deduct_tokens_with_check(
             user_id, 
@@ -1776,9 +1773,6 @@ async def generate_video(message: types.Message, state: FSMContext):
                 parse_mode="HTML"
             )
             return
-    else:
-        # Для админа просто логируем
-        logger.info(f"👑 Админ {user_id} — токены не списаны")
     
     loading = await message.answer(
         f"🎬 Генерирую видео ({duration} сек) на {model.get('name', '...')}...\n"
@@ -1786,55 +1780,68 @@ async def generate_video(message: types.Message, state: FSMContext):
     )
     
     try:
-        # TODO: Интеграция с GenAPI
-        await asyncio.sleep(3)
+        # ============================================================
+        # РЕАЛЬНЫЙ ЗАПРОС К GenAPI ЧЕРЕЗ ai_service
+        # ============================================================
+        video_result = await ai_service.generate(
+            provider_type="video",
+            response_type=ResponseType.VIDEO,
+            prompt=prompt,
+            model=model.get("api_model", "ltx-video"),
+            duration=duration,
+            size="1280x720"
+        )
         
-        # Для админа показываем что токены не тратились
+        if video_result.status != GenerationStatus.SUCCESS:
+            error_msg = video_result.metadata.get("error", "Неизвестная ошибка")
+            raise Exception(f"Ошибка генерации: {error_msg}")
+        
+        # Парсим ответ
+        video_data = json.loads(video_result.content)
+        video_url = video_data.get("url")
+        
+        if not video_url:
+            raise Exception("URL видео не получен от API")
+        
+        # ============================================================
+        # ФОРМИРУЕМ ПОДПИСЬ
+        # ============================================================
+        caption = (
+            f"🎬 **Видео готово!**\n\n"
+            f"🎯 Модель: {model.get('name', '...')}\n"
+            f"⏱️ Длительность: {duration} сек\n"
+            f"🤖 Промт: {prompt[:100]}{'...' if len(prompt) > 100 else ''}\n"
+        )
+        
         if is_admin(user_id):
-            caption = (
-                f"🎬 **Видео готово!**\n\n"
-                f"🎯 Модель: {model.get('name', '...')}\n"
-                f"⏱️ Длительность: {duration} сек\n"
-                f"👑 **Админ — токены не списаны**"
-            )
+            caption += f"👑 **Админ — токены не списаны**"
         else:
-            caption = (
-                f"🎬 **Видео готово!**\n\n"
-                f"🎯 Модель: {model.get('name', '...')}\n"
-                f"⏱️ Длительность: {duration} сек\n"
-                f"📊 Потрачено: **{required_tokens}** токенов\n"
-                f"💳 Осталось: **{tokens - required_tokens}** токенов"
-            )
+            caption += f"📊 Потрачено: **{required_tokens}** токенов\n"
+            caption += f"💳 Осталось: **{tokens - required_tokens}** токенов"
         
+        # ============================================================
+        # ОТПРАВКА ВИДЕО
+        # ============================================================
         await message.answer_video(
-            video="https://example.com/video.mp4",
+            video=video_url,
             caption=caption,
             parse_mode="HTML"
         )
         
     except Exception as e:
-        # Возвращаем токены только если НЕ админ
+        logger.error(f"Ошибка генерации видео: {e}")
+        
         if not is_admin(user_id):
             await token_repository.refund_tokens(user_id, required_tokens, f"Возврат за ошибку видео")
-        logger.error(f"Ошибка генерации видео: {e}")
+        
         await message.answer(
-            "❌ Ошибка при генерации видео." + 
+            f"❌ Ошибка при генерации видео: {str(e)}" + 
             ("" if is_admin(user_id) else " Токены возвращены."),
             parse_mode="HTML"
         )
     
     finally:
         await loading.delete()
-
-
-async def cancel_video_creation(message: types.Message, state: FSMContext):
-    """Отмена создания видео."""
-    await state.clear()
-    await state.set_state(VideoStates.menu)
-    await message.answer(
-        "❌ Отменено.",
-        reply_markup=get_video_menu_keyboard()
-    )
 
 
 # ==================== AI АССИСТЕНТ ====================

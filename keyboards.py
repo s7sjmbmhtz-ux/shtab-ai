@@ -298,7 +298,6 @@ def get_video_duration_keyboard(max_duration: int = 30) -> ReplyKeyboardMarkup:
     if max_duration >= 30:
         durations.append(KeyboardButton(text="30 секунд"))
     
-    # Разбиваем по 2 в строке
     buttons = []
     for i in range(0, len(durations), 2):
         row = durations[i:i+2]
@@ -463,6 +462,28 @@ def get_marketplace_task_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
         one_time_keyboard=False
     )
+
+
+# ==================== ТОКЕНЫ ====================
+
+def get_tokens_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура покупки токенов."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🪙 100 токенов — 49 ₽", callback_data="buy_tokens_100")
+    builder.button(text="🪙 500 токенов — 199 ₽", callback_data="buy_tokens_500")
+    builder.button(text="🪙 1000 токенов — 349 ₽", callback_data="buy_tokens_1000")
+    builder.button(text="🪙 5000 токенов — 1499 ₽", callback_data="buy_tokens_5000")
+    builder.button(text="🎁 Ввести промокод", callback_data="enter_promo")
+    builder.button(text="🔙 Назад", callback_data="back_to_main")
+    builder.adjust(2, 2, 1, 1)
+    return builder.as_markup()
+
+
+def get_promo_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура для ввода промокода."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🔙 Назад", callback_data="back_to_tokens")
+    return builder.as_markup()
 
 
 # ==================== ОБЩИЕ ====================

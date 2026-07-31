@@ -26,6 +26,11 @@ class TextProvider(AIProvider):
         self.api_key = settings.GENAPI_API_KEY
         self.base_url = settings.GENAPI_BASE_URL
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
+    )
     async def _make_request(self, prompt: str, model: str, temperature: float) -> str:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -39,8 +44,6 @@ class TextProvider(AIProvider):
         }
 
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
-
-        logger.info(f"📤 TEXT API запрос: {self.base_url}/api/v1/networks/{model}")
 
         response = await self.client.post(
             f"{self.base_url}/api/v1/networks/{model}",
@@ -99,6 +102,11 @@ class ImageProvider(AIProvider):
         self.api_key = settings.GENAPI_API_KEY
         self.base_url = settings.GENAPI_BASE_URL
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=8),
+        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
+    )
     async def _make_request(self, prompt: str, size: str, model: str) -> Dict[str, Any]:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -111,8 +119,6 @@ class ImageProvider(AIProvider):
         }
 
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
-
-        logger.info(f"📤 IMAGE API запрос: {self.base_url}/api/v1/networks/{model}")
 
         response = await self.client.post(
             f"{self.base_url}/api/v1/networks/{model}",
@@ -183,7 +189,31 @@ class VideoProvider(AIProvider):
         self.client = client
         self.api_key = settings.GENAPI_API_KEY
         self.base_url = settings.GENAPI_BASE_URL
+        self.max_wait_time = 600  # 10 минут на генерацию видео
 
+    async def _check_status(self, request_id: str) -> Dict[str, Any]:
+        """Проверка статуса видео по request_id."""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        url = f"{self.base_url}/api/v1/request/get/{request_id}"
+        logger.info(f"🔍 Проверка статуса: {url}")
+        
+        response = await self.client.get(
+            url,
+            headers=headers,
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
+    )
     async def _make_request(self, prompt: str, model: str, **kwargs) -> Dict[str, Any]:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -191,12 +221,24 @@ class VideoProvider(AIProvider):
             "Accept": "application/json"
         }
         
+        # ============================================================
+        # БАЗОВЫЙ PAYLOAD
+        # ============================================================
+        duration = kwargs.get("duration", 5)
+        
+        # Для Veo и Luma duration всегда со строкой "s"
+        if model in ["veo-3.1", "veo-3-1-lite", "luma"]:
+            duration = f"{duration}s"
+        
         payload = {
             "callback_url": None,
             "prompt": prompt,
-            "duration": kwargs.get("duration", 5)
+            "duration": duration
         }
         
+        # ============================================================
+        # LTX 2.3
+        # ============================================================
         if model == "ltx-2-3":
             payload.update({
                 "mode": kwargs.get("mode", "pro"),
@@ -206,6 +248,9 @@ class VideoProvider(AIProvider):
                 "generate_audio": True
             })
         
+        # ============================================================
+        # CogVideoX 5B
+        # ============================================================
         if model == "cog-video-x-5b":
             payload.update({
                 "width": kwargs.get("width", 720),
@@ -218,6 +263,9 @@ class VideoProvider(AIProvider):
                 "export_fps": kwargs.get("export_fps", 30)
             })
         
+        # ============================================================
+        # Kling Video O3
+        # ============================================================
         if model == "kling-video-o3":
             payload.update({
                 "model": kwargs.get("model_type", "text-to-video"),
@@ -227,21 +275,14 @@ class VideoProvider(AIProvider):
                 "shot_type": kwargs.get("shot_type", "customize"),
                 "keep_audio": kwargs.get("keep_audio", False)
             })
-            if kwargs.get("multi_prompt"):
-                payload["multi_prompt"] = kwargs.get("multi_prompt")
-            if kwargs.get("elements"):
-                payload["elements"] = kwargs.get("elements")
-            if kwargs.get("voice_ids"):
-                payload["voice_ids"] = kwargs.get("voice_ids")
             if kwargs.get("start_image_url"):
                 payload["start_image_url"] = kwargs.get("start_image_url")
             if kwargs.get("end_image_url"):
                 payload["end_image_url"] = kwargs.get("end_image_url")
-            if kwargs.get("image_urls"):
-                payload["image_urls"] = kwargs.get("image_urls")
-            if kwargs.get("video_url"):
-                payload["video_url"] = kwargs.get("video_url")
         
+        # ============================================================
+        # Kling Video V3
+        # ============================================================
         if model == "kling-video-v3":
             payload.update({
                 "model": kwargs.get("model_type", "pro"),
@@ -251,22 +292,18 @@ class VideoProvider(AIProvider):
                 "cfg_scale": kwargs.get("cfg_scale", 0.5),
                 "shot_type": kwargs.get("shot_type", "customize")
             })
-            if kwargs.get("multi_prompt"):
-                payload["multi_prompt"] = kwargs.get("multi_prompt")
-            if kwargs.get("elements"):
-                payload["elements"] = kwargs.get("elements")
-            if kwargs.get("voice_ids"):
-                payload["voice_ids"] = kwargs.get("voice_ids")
             if kwargs.get("start_image_url"):
                 payload["start_image_url"] = kwargs.get("start_image_url")
             if kwargs.get("end_image_url"):
                 payload["end_image_url"] = kwargs.get("end_image_url")
         
+        # ============================================================
+        # Veo 3.1
+        # ============================================================
         if model == "veo-3.1":
             payload.update({
                 "mode": kwargs.get("mode", "txt2video"),
                 "resolution": kwargs.get("resolution", "720p"),
-                "duration": kwargs.get("duration_str", "8s"),
                 "generate_audio": kwargs.get("generate_audio", True),
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
                 "enhance_prompt": kwargs.get("enhance_prompt", False),
@@ -280,11 +317,13 @@ class VideoProvider(AIProvider):
             if kwargs.get("image_urls"):
                 payload["image_urls"] = kwargs.get("image_urls")
         
+        # ============================================================
+        # Veo 3.1 Lite
+        # ============================================================
         if model == "veo-3-1-lite":
             payload.update({
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
                 "resolution": kwargs.get("resolution", "720p"),
-                "duration": kwargs.get("duration_str", "8s"),
                 "generate_audio": kwargs.get("generate_audio", True),
                 "auto_fix": kwargs.get("auto_fix", True)
             })
@@ -297,6 +336,9 @@ class VideoProvider(AIProvider):
             if kwargs.get("last_frame_url"):
                 payload["last_frame_url"] = kwargs.get("last_frame_url")
         
+        # ============================================================
+        # Luma Ray2
+        # ============================================================
         if model == "luma":
             payload["user_prompt"] = prompt
             del payload["prompt"]
@@ -305,7 +347,6 @@ class VideoProvider(AIProvider):
                 "expand_prompt": kwargs.get("expand_prompt", True),
                 "loop": kwargs.get("loop", False),
                 "resolution": kwargs.get("resolution", "720p"),
-                "duration": kwargs.get("duration_str", "5s"),
                 "model": kwargs.get("model_type", "ray-2-flash")
             })
             if kwargs.get("image_url"):
@@ -313,12 +354,14 @@ class VideoProvider(AIProvider):
             if kwargs.get("image_end_url"):
                 payload["image_end_url"] = kwargs.get("image_end_url")
         
+        # ============================================================
+        # Runway Gen-4
+        # ============================================================
         if model == "runway-gen4":
             payload["promptText"] = prompt
             del payload["prompt"]
             payload.update({
                 "model": kwargs.get("model_type", "gen4_turbo"),
-                "duration": kwargs.get("duration", 5),
                 "ratio": kwargs.get("ratio", "1280:720")
             })
             if kwargs.get("firstFrame"):
@@ -341,6 +384,35 @@ class VideoProvider(AIProvider):
         response.raise_for_status()
         return response.json()
 
+    async def _wait_for_video(self, request_id: str, timeout: int = 600) -> Optional[Dict[str, Any]]:
+        """Ожидание готовности видео с проверкой статуса."""
+        start_time = asyncio.get_event_loop().time()
+        check_interval = 5  # проверяем каждые 5 секунд
+        
+        while (asyncio.get_event_loop().time() - start_time) < timeout:
+            try:
+                status = await self._check_status(request_id)
+                logger.info(f"📊 Статус видео: {status.get('status')}, прогресс: {status.get('progress', 0)}%")
+                
+                if status.get("status") == "success":
+                    return status
+                elif status.get("status") == "failed":
+                    logger.error(f"❌ Генерация видео провалилась: {status}")
+                    return None
+                elif status.get("status") in ["starting", "processing", "queued"]:
+                    await asyncio.sleep(check_interval)
+                    continue
+                else:
+                    logger.warning(f"⚠️ Неизвестный статус: {status}")
+                    await asyncio.sleep(check_interval)
+                    
+            except Exception as e:
+                logger.error(f"❌ Ошибка проверки статуса: {e}")
+                await asyncio.sleep(check_interval)
+        
+        logger.error(f"⏰ Таймаут ожидания видео ({timeout} сек)")
+        return None
+
     async def generate(self, prompt: str, **kwargs) -> AIResponse:
         model = kwargs.get("model", settings.FREE_VIDEO_MODEL)
         duration = kwargs.get("duration", 5)
@@ -353,12 +425,6 @@ class VideoProvider(AIProvider):
             kwargs_copy.pop("model", None)
             kwargs_copy.pop("duration", None)
             kwargs_copy.pop("size", None)
-            
-            if model in ["veo-3.1", "veo-3-1-lite"]:
-                kwargs_copy["duration_str"] = f"{duration}s"
-            
-            if model == "luma":
-                kwargs_copy["duration_str"] = f"{duration}s"
             
             result = await self._make_request(prompt=prompt, model=model, **kwargs_copy)
             elapsed = asyncio.get_event_loop().time() - start_time
@@ -374,18 +440,76 @@ class VideoProvider(AIProvider):
                     response_type=ResponseType.VIDEO
                 )
 
-            video_url = None
-            
-            if result.get("request_id") and result.get("status") == "starting":
-                logger.info(f"⏳ Видео генерируется, request_id: {result.get('request_id')}")
+            # ============================================================
+            # АСИНХРОННАЯ ГЕНЕРАЦИЯ — ждём результат
+            # ============================================================
+            request_id = result.get("request_id")
+            if request_id:
+                logger.info(f"⏳ Видео генерируется, request_id: {request_id}")
+                
+                # Отправляем сообщение пользователю о начале генерации
+                # (это будет обработано в handlers.py)
+                
+                # Ждём готовности видео
+                final_result = await self._wait_for_video(request_id)
+                
+                if not final_result:
+                    return AIResponse(
+                        content="",
+                        provider="genapi_video",
+                        model=model,
+                        status=GenerationStatus.ERROR,
+                        response_type=ResponseType.VIDEO,
+                        metadata={"error": "Таймаут ожидания видео или ошибка генерации"}
+                    )
+                
+                # Извлекаем URL из результата
+                video_url = None
+                output = final_result.get("output")
+                
+                if isinstance(output, list) and len(output) > 0:
+                    video_url = output[0]
+                elif isinstance(output, str):
+                    video_url = output
+                elif isinstance(output, dict):
+                    video_url = output.get("url") or output.get("video_url")
+                
+                if not video_url and final_result.get("result"):
+                    video_url = final_result["result"]
+                
+                if not video_url:
+                    return AIResponse(
+                        content="",
+                        provider="genapi_video",
+                        model=model,
+                        status=GenerationStatus.EMPTY_RESPONSE,
+                        response_type=ResponseType.VIDEO,
+                        metadata={"error": "URL видео не найден", "raw_response": str(final_result)[:500]}
+                    )
+                
+                response_data = {
+                    "type": "video",
+                    "url": video_url,
+                    "duration": duration,
+                    "size": size,
+                    "prompt": prompt,
+                    "model": model
+                }
+
                 return AIResponse(
-                    content=json.dumps({"status": "processing", "request_id": result.get("request_id")}),
+                    content=json.dumps(response_data, ensure_ascii=False),
                     provider="genapi_video",
                     model=model,
+                    elapsed=elapsed,
                     status=GenerationStatus.SUCCESS,
                     response_type=ResponseType.VIDEO,
-                    metadata={"request_id": result.get("request_id")}
+                    metadata=response_data
                 )
+            
+            # ============================================================
+            # СИНХРОННАЯ ГЕНЕРАЦИЯ — сразу есть URL
+            # ============================================================
+            video_url = None
             
             if result.get("data") and isinstance(result["data"], list) and len(result["data"]) > 0:
                 video_url = result["data"][0].get("url")
@@ -401,10 +525,6 @@ class VideoProvider(AIProvider):
             
             if not video_url and result.get("url"):
                 video_url = result["url"]
-            
-            if not video_url and result.get("videos"):
-                if isinstance(result["videos"], list) and len(result["videos"]) > 0:
-                    video_url = result["videos"][0].get("url")
 
             if not video_url:
                 return AIResponse(
@@ -464,7 +584,7 @@ class AudioProvider(AIProvider):
 
 class AIService:
     def __init__(self):
-        timeout = getattr(settings, 'AI_TIMEOUT', 120)
+        timeout = getattr(settings, 'AI_TIMEOUT', 600)  # Увеличиваем до 600 секунд
         self.client = httpx.AsyncClient(
             timeout=timeout,
             limits=httpx.Limits(max_keepalive_connections=10, max_connections=50)

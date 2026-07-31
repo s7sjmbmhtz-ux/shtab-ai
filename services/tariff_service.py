@@ -17,6 +17,7 @@ def get_tariff_limits(tariff_id: str) -> Dict[str, int]:
     return {
         "text": config.get("text_limit", 0),
         "image": config.get("image_limit", 0),
+        "video": config.get("video_limit", 0),
     }
 
 

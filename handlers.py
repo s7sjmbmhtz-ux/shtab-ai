@@ -1742,34 +1742,45 @@ async def generate_video(message: types.Message, state: FSMContext):
     price_per_second = model.get("price_per_second", 5)
     required_tokens = duration * price_per_second
     
-    # Проверяем баланс токенов
-    tokens = await get_user_tokens_balance(user_id)
+    # ==================== ПРОВЕРКА ДЛЯ АДМИНА ====================
+    # Если админ — пропускаем проверку токенов
+    if is_admin(user_id):
+        tokens = 999999  # Бесконечность для админа
+        logger.info(f"👑 Админ {user_id} генерирует видео без списания токенов")
+    else:
+        # Проверяем баланс токенов для обычных пользователей
+        tokens = await get_user_tokens_balance(user_id)
+        
+        if tokens < required_tokens:
+            await message.answer(
+                f"❌ **Недостаточно токенов.**\n\n"
+                f"🎯 Модель: {model.get('name', '...')}\n"
+                f"⏱️ Длительность: {duration} сек\n"
+                f"💰 Нужно: **{required_tokens}** токенов\n"
+                f"💳 У вас: **{tokens}** токенов\n\n"
+                f"Пополните баланс через «💳 Купить кредиты»",
+                parse_mode="HTML"
+            )
+            return
     
-    if tokens < required_tokens:
-        await message.answer(
-            f"❌ **Недостаточно токенов.**\n\n"
-            f"🎯 Модель: {model.get('name', '...')}\n"
-            f"⏱️ Длительность: {duration} сек\n"
-            f"💰 Нужно: **{required_tokens}** токенов\n"
-            f"💳 У вас: **{tokens}** токенов\n\n"
-            f"Пополните баланс через «💳 Купить кредиты»",
-            parse_mode="HTML"
+    # ==================== СПИСАНИЕ ТОКЕНОВ ====================
+    # Если НЕ админ — списываем токены
+    if not is_admin(user_id):
+        success = await deduct_tokens_with_check(
+            user_id, 
+            required_tokens, 
+            f"Генерация видео {duration} сек на {model.get('name', '...')}"
         )
-        return
-    
-    # Списываем токены
-    success = await deduct_tokens_with_check(
-        user_id, 
-        required_tokens, 
-        f"Генерация видео {duration} сек на {model.get('name', '...')}"
-    )
-    
-    if not success:
-        await message.answer(
-            "❌ Ошибка списания токенов. Попробуйте позже.",
-            parse_mode="HTML"
-        )
-        return
+        
+        if not success:
+            await message.answer(
+                "❌ Ошибка списания токенов. Попробуйте позже.",
+                parse_mode="HTML"
+            )
+            return
+    else:
+        # Для админа просто логируем
+        logger.info(f"👑 Админ {user_id} — токены не списаны")
     
     loading = await message.answer(
         f"🎬 Генерирую видео ({duration} сек) на {model.get('name', '...')}...\n"
@@ -1780,24 +1791,37 @@ async def generate_video(message: types.Message, state: FSMContext):
         # TODO: Интеграция с GenAPI
         await asyncio.sleep(3)
         
-        await message.answer_video(
-            video="https://example.com/video.mp4",
-            caption=(
+        # Для админа показываем что токены не тратились
+        if is_admin(user_id):
+            caption = (
+                f"🎬 **Видео готово!**\n\n"
+                f"🎯 Модель: {model.get('name', '...')}\n"
+                f"⏱️ Длительность: {duration} сек\n"
+                f"👑 **Админ — токены не списаны**"
+            )
+        else:
+            caption = (
                 f"🎬 **Видео готово!**\n\n"
                 f"🎯 Модель: {model.get('name', '...')}\n"
                 f"⏱️ Длительность: {duration} сек\n"
                 f"📊 Потрачено: **{required_tokens}** токенов\n"
                 f"💳 Осталось: **{tokens - required_tokens}** токенов"
-            ),
+            )
+        
+        await message.answer_video(
+            video="https://example.com/video.mp4",
+            caption=caption,
             parse_mode="HTML"
         )
         
     except Exception as e:
-        await token_repository.refund_tokens(user_id, required_tokens, f"Возврат за ошибку видео")
+        # Возвращаем токены только если НЕ админ
+        if not is_admin(user_id):
+            await token_repository.refund_tokens(user_id, required_tokens, f"Возврат за ошибку видео")
         logger.error(f"Ошибка генерации видео: {e}")
         await message.answer(
-            "❌ Ошибка при генерации видео. Токены возвращены.\n\n"
-            f"💳 Ваш баланс: **{tokens}** токенов",
+            "❌ Ошибка при генерации видео." + 
+            ("" if is_admin(user_id) else " Токены возвращены."),
             parse_mode="HTML"
         )
     

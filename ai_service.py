@@ -199,7 +199,7 @@ class ImageProvider(AIProvider):
 
 
 # ============================================================
-# VIDEO PROVIDER (GenAPI) — ИСПРАВЛЕННЫЙ
+# VIDEO PROVIDER (GenAPI) — УНИВЕРСАЛЬНЫЙ
 # ============================================================
 
 class VideoProvider(AIProvider):
@@ -211,26 +211,46 @@ class VideoProvider(AIProvider):
     async def _make_request(self, prompt: str, model: str, **kwargs) -> Dict[str, Any]:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
         
+        # ============================================================
+        # БАЗОВЫЙ PAYLOAD ДЛЯ ВСЕХ МОДЕЛЕЙ
+        # ============================================================
         payload = {
-            "model": model,
+            "callback_url": None,
             "prompt": prompt,
-            "duration": kwargs.get("duration", 5),
-            "size": kwargs.get("size", "1280x720"),
-            "n": 1
+            "duration": kwargs.get("duration", 5)
         }
         
+        # ============================================================
+        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ LTX 2.3
+        # ============================================================
+        if model == "ltx-2-3":
+            payload.update({
+                "mode": kwargs.get("mode", "pro"),
+                "resolution": kwargs.get("resolution", "1080p"),
+                "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
+                "fps": 25,
+                "generate_audio": True
+            })
+        
+        # ============================================================
+        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ
+        # ============================================================
         if kwargs.get("image"):
-            payload["image"] = kwargs.get("image")
+            payload["image_url"] = kwargs.get("image")
+        
+        if kwargs.get("end_image"):
+            payload["end_image_url"] = kwargs.get("end_image")
         
         if kwargs.get("negative_prompt"):
             payload["negative_prompt"] = kwargs.get("negative_prompt")
 
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
 
-        url = f"{self.base_url}/video/generations"
+        url = f"{self.base_url}/api/v1/networks/{model}"
         logger.info(f"📤 Video API запрос: {url}")
         logger.info(f"📤 Payload: {payload}")
 
@@ -270,8 +290,25 @@ class VideoProvider(AIProvider):
                     response_type=ResponseType.VIDEO
                 )
 
+            # ============================================================
+            # ОБРАБОТКА РАЗНЫХ ФОРМАТОВ ОТВЕТА
+            # ============================================================
             video_url = None
             
+            # Если это асинхронный запрос — возвращаем request_id
+            if result.get("request_id") and result.get("status") == "starting":
+                logger.info(f"⏳ Видео генерируется, request_id: {result.get('request_id')}")
+                # TODO: Реализовать Long-Pooling или callback
+                return AIResponse(
+                    content=json.dumps({"status": "processing", "request_id": result.get("request_id")}),
+                    provider="genapi_video",
+                    model=model,
+                    status=GenerationStatus.SUCCESS,
+                    response_type=ResponseType.VIDEO,
+                    metadata={"request_id": result.get("request_id")}
+                )
+            
+            # Стандартные форматы ответа
             if result.get("data") and isinstance(result["data"], list) and len(result["data"]) > 0:
                 video_url = result["data"][0].get("url")
                 if not video_url and result["data"][0].get("b64_json"):

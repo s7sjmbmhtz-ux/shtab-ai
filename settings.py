@@ -1,14 +1,14 @@
 # ============================================================
 # TELEGRAM
 # ============================================================
-BOT_TOKEN=ваш_токен_бота
-BOT_USERNAME=@ShtabProBot
+BOT_TOKEN="ваш_токен_бота"
+BOT_USERNAME="@ShtabProBot"
 
 # ============================================================
-# AI PROVIDER — GENAPI (ВСЁ В ОДНОМ: ТЕКСТ, ИЗОБРАЖЕНИЯ, ВИДЕО)
+# AI PROVIDER — GENAPI (ВСЁ В ОДНОМ)
 # ============================================================
-GENAPI_API_KEY=sk-sh5NO6Y51I6apX2Y16ZOmIskyvjpSPydUXHNRGtKH6g6rWDSWiaSPhAEnt7E
-GENAPI_BASE_URL=https://api.gen-api.ru/v1
+GENAPI_API_KEY="sk-sh5NO6Y51I6apX2Y16ZOmIskyvjpSPydUXHNRGtKH6g6rWDSWiaSPhAEnt7E"
+GENAPI_BASE_URL="https://api.gen-api.ru/v1"
 
 # ============================================================
 # ADMIN
@@ -18,41 +18,41 @@ ADMIN_TELEGRAM_ID=548576688
 # ============================================================
 # DATABASE
 # ============================================================
-DB_PATH=ai_shtab.db
+DB_PATH="ai_shtab.db"
 
 # ============================================================
 # AI SERVICE
 # ============================================================
-AI_TIMEOUT=60
+AI_TIMEOUT=120
 AI_MAX_RETRIES=3
 
 # ============================================================
 # MODELS — FREE (GenAPI)
 # ============================================================
-FREE_TEXT_MODEL=deepseek/deepseek-v4-flash
-FREE_IMAGE_MODEL=flux-schnell
-FREE_VIDEO_MODEL=ltx-video
+FREE_TEXT_MODEL="deepseek/deepseek-v4-flash"
+FREE_IMAGE_MODEL="flux-schnell"
+FREE_VIDEO_MODEL="ltx-video"
 
 # ============================================================
 # MODELS — LITE (GenAPI)
 # ============================================================
-LITE_TEXT_MODEL=deepseek/deepseek-v4-pro
-LITE_IMAGE_MODEL=flux-dev
-LITE_VIDEO_MODEL=veo-3.1-lite
+LITE_TEXT_MODEL="deepseek/deepseek-v4-pro"
+LITE_IMAGE_MODEL="flux-dev"
+LITE_VIDEO_MODEL="veo-3.1-lite"
 
 # ============================================================
 # MODELS — PRO (GenAPI)
 # ============================================================
-PRO_TEXT_MODEL=openai/gpt-5.4-mini
-PRO_IMAGE_MODEL=flux-pro
-PRO_VIDEO_MODEL=veo-3.1
+PRO_TEXT_MODEL="openai/gpt-5.4-mini"
+PRO_IMAGE_MODEL="flux-pro"
+PRO_VIDEO_MODEL="veo-3.1"
 
 # ============================================================
 # MODELS — BUSINESS (GenAPI)
 # ============================================================
-BUSINESS_TEXT_MODEL=openai/gpt-5.5
-BUSINESS_IMAGE_MODEL=flux-pro
-BUSINESS_VIDEO_MODEL=veo-3.1
+BUSINESS_TEXT_MODEL="openai/gpt-5.5"
+BUSINESS_IMAGE_MODEL="flux-pro"
+BUSINESS_VIDEO_MODEL="veo-3.1"
 
 # ============================================================
 # LIMITS (текст и изображения — старые лимиты)
@@ -68,14 +68,3 @@ PRO_IMAGE_LIMIT=20
 
 BUSINESS_TEXT_LIMIT=500
 BUSINESS_IMAGE_LIMIT=100
-
-# ============================================================
-# ТОКЕНЫ — ПАКЕТЫ ДЛЯ ПОКУПКИ
-# ============================================================
-TOKEN_PACKAGES = {
-    "free": {"name": "💡 Пробный", "tokens": 10, "price": 0},
-    "starter": {"name": "⚡ Стартовый", "tokens": 50, "price": 100},
-    "optimal": {"name": "🚀 Оптимальный", "tokens": 250, "price": 500},
-    "pro": {"name": "💎 Профессиональный", "tokens": 700, "price": 1190},
-    "max": {"name": "👑 Максимальный", "tokens": 2000, "price": 3000},
-}

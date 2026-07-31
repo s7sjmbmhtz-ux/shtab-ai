@@ -42,6 +42,7 @@ class Category(str, Enum):
     EDITOR = "editor"
     ANALYTICS = "analytics"
     IMAGE = "image"
+    VIDEO = "video"
     ASSISTANT = "assistant"
 
 
@@ -113,6 +114,39 @@ class PromptContext:
             original_response=original_response,
             user_request=user_request
         )
+
+
+# ============================================================
+# VIDEO MODELS
+# ============================================================
+
+class VideoModel(str, Enum):
+    LTX = "ltx"
+    COGVIDEO = "cogvideo"
+    KLING_STANDARD = "kling_standard"
+    KLING_PRO = "kling_pro"
+    VEO_LITE = "veo_lite"
+    VEO = "veo"
+    LUMA_RAY2 = "luma_ray2"
+    RUNWAY_GEN4 = "runway_gen4"
+
+
+class VideoGenerationData(BaseModel):
+    """Данные для генерации видео."""
+    prompt: str
+    model: VideoModel
+    duration: int = 5  # секунды
+    photo_file_id: Optional[str] = None
+    resolution: str = "1080p"
+    aspect_ratio: str = "16:9"
+
+
+class VideoInfo(BaseModel):
+    """Информация о сгенерированном видео."""
+    url: str
+    duration: int
+    resolution: str
+    model: str
 
 
 # ============================================================
@@ -540,6 +574,7 @@ class User(BaseModel):
     first_name: Optional[str] = None
     tariff: str = "free"
     is_admin: bool = False
+    tokens: int = 0  # Добавлено поле для токенов
     created_at: Optional[datetime] = None
     last_activity: Optional[datetime] = None
 

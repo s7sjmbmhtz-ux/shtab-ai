@@ -1,49 +1,32 @@
-"""
-Маршрутизация моделей в зависимости от тарифа и типа запроса.
-"""
-
+from models import ResponseType, Tariff
 from settings import settings
-from models import Tariff, ResponseType
+
+# Маппинг тарифов на модели GenAPI
+MODEL_MAP = {
+    Tariff.FREE: {
+        ResponseType.TEXT: "deepseek/deepseek-v4-flash",
+        ResponseType.IMAGE: "flux-schnell",
+        ResponseType.VIDEO: "ltx-video",
+    },
+    Tariff.LITE: {
+        ResponseType.TEXT: "deepseek/deepseek-v4-pro",
+        ResponseType.IMAGE: "flux-dev",
+        ResponseType.VIDEO: "veo-3.1-lite",
+    },
+    Tariff.PRO: {
+        ResponseType.TEXT: "openai/gpt-5.4-mini",
+        ResponseType.IMAGE: "flux-pro",
+        ResponseType.VIDEO: "veo-3.1",
+    },
+    Tariff.BUSINESS: {
+        ResponseType.TEXT: "openai/gpt-5.5",
+        ResponseType.IMAGE: "flux-pro",
+        ResponseType.VIDEO: "veo-3.1",
+    },
+}
 
 
 def get_model_for_tariff(tariff: Tariff, response_type: ResponseType) -> str:
-    """
-    Возвращает модель для указанного тарифа и типа ответа.
-    """
-    if response_type == ResponseType.TEXT:
-        return _get_text_model(tariff)
-    elif response_type == ResponseType.IMAGE:
-        return _get_image_model(tariff)
-    return settings.free_text_model
-
-
-def _get_text_model(tariff: Tariff) -> str:
-    if tariff == Tariff.FREE:
-        return settings.free_text_model
-    elif tariff == Tariff.LITE:
-        return settings.lite_text_model
-    elif tariff == Tariff.PRO:
-        return settings.pro_text_model
-    elif tariff == Tariff.BUSINESS:
-        return settings.business_text_model
-    return settings.free_text_model
-
-
-def _get_image_model(tariff: Tariff) -> str:
-    if tariff == Tariff.FREE:
-        return settings.free_image_model
-    elif tariff == Tariff.LITE:
-        return settings.lite_image_model
-    elif tariff == Tariff.PRO:
-        return settings.pro_image_model
-    elif tariff == Tariff.BUSINESS:
-        return settings.business_image_model
-    return settings.free_image_model
-
-
-def get_default_models() -> dict:
-    """Возвращает модели по умолчанию для FREE тарифа."""
-    return {
-        "text": settings.free_text_model,
-        "image": settings.free_image_model,
-    }
+    """Возвращает модель для заданного тарифа и типа ответа."""
+    tariff_config = MODEL_MAP.get(tariff, MODEL_MAP[Tariff.FREE])
+    return tariff_config.get(response_type, tariff_config.get(ResponseType.TEXT, "deepseek/deepseek-v4-flash"))

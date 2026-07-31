@@ -11,7 +11,7 @@ class Settings:
 
     # GENAPI
     GENAPI_API_KEY = os.getenv("GENAPI_API_KEY", "sk-x44sRSwk2lzgUBOz3Z5RAu6uerXfgfIpYvOaXYibJfiW2M5EzDnEHJsGeBuO")
-    GENAPI_BASE_URL = os.getenv("GENAPI_BASE_URL", "https://proxy.gen-api.ru/v1")
+    GENAPI_BASE_URL = os.getenv("GENAPI_BASE_URL", "https://api.gen-api.ru")
 
     # ADMIN
     ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", "548576688"))

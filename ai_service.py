@@ -336,26 +336,30 @@ class VideoProvider(AIProvider):
                 metadata=response_data
             )
 
-        except httpx.HTTPStatusError as e:
-            logger.error(f"❌ HTTP ошибка Video API: {e.response.status_code} - {e.response.text}")
-            return AIResponse(
-                content="",
-                provider="genapi_video",
-                model=model,
-                status=GenerationStatus.ERROR,
-                response_type=ResponseType.VIDEO,
-                metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
-            )
-        except Exception as e:
-            logger.error(f"❌ Ошибка генерации видео: {e}")
-            return AIResponse(
-                content="",
-                provider="genapi_video",
-                model=model,
-                status=GenerationStatus.ERROR,
-                response_type=ResponseType.VIDEO,
-                metadata={"error": str(e)}
-            )
+except httpx.HTTPStatusError as e:
+    logger.error(f"❌ HTTP ошибка Video API: {e.response.status_code}")
+    logger.error(f"❌ Response text: {e.response.text}")
+    return AIResponse(
+        content="",
+        provider="genapi_video",
+        model=model,
+        status=GenerationStatus.ERROR,
+        response_type=ResponseType.VIDEO,
+        metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:500]}"}
+    )
+except Exception as e:
+    logger.error(f"❌ Ошибка генерации видео: {e}")
+    logger.error(f"❌ Тип ошибки: {type(e)}")
+    import traceback
+    logger.error(f"❌ Traceback: {traceback.format_exc()}")
+    return AIResponse(
+        content="",
+        provider="genapi_video",
+        model=model,
+        status=GenerationStatus.ERROR,
+        response_type=ResponseType.VIDEO,
+        metadata={"error": str(e)}
+    )
 
 
 # ============================================================

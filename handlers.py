@@ -2160,8 +2160,8 @@ async def show_tokens_packages(callback: types.CallbackQuery):
 
 
 @router.message(F.text == "💳 Купить кредиты")
-async def show_tokens_packages_message(message: types.Message, state: FSMContext):
-    """Показать пакеты токенов (из меню)."""
+async def show_tokens_packages(message: types.Message, state: FSMContext):
+    """Показать пакеты токенов."""
     user_id = message.from_user.id
     tokens = await get_user_tokens_balance(user_id)
     
@@ -2180,17 +2180,23 @@ async def show_tokens_packages_message(message: types.Message, state: FSMContext
     )
 
 
-@router.callback_query(F.data == "back_to_tariffs")
-async def back_to_tariffs(callback: types.CallbackQuery):
-    """Вернуться к выбору тарифов/токенов."""
-    text = "🚀 ШТАБ AI — Тарифы и токены\n\n"
-    text += "Выберите, что вам нужно:\n\n"
-    text += "📋 **Подписки** — для регулярного использования\n"
-    text += "🪙 **Пакеты токенов** — для разовых задач"
+@router.callback_query(F.data == "show_tokens")
+async def show_tokens_packages_callback(callback: types.CallbackQuery):
+    """Показать пакеты токенов (из callback)."""
+    user_id = callback.from_user.id
+    tokens = await get_user_tokens_balance(user_id)
+    
+    text = f"🪙 **Пакеты токенов**\n\n"
+    text += f"💰 Ваш баланс: **{tokens}** кредитов\n\n"
+    text += "Разовое пополнение для любых задач:\n"
+    text += "✅ Токены не сгорают\n"
+    text += "✅ Подходят для всего: текст, изображения, видео\n"
+    text += "✅ Можно использовать в любое время\n\n"
+    text += "Выберите пакет:"
 
     await callback.message.edit_text(
         text,
-        reply_markup=get_tariff_and_tokens_keyboard(),
+        reply_markup=get_tokens_packages_keyboard(),
         parse_mode="HTML"
     )
     await callback.answer()

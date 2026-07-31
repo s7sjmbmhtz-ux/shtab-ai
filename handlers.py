@@ -387,7 +387,14 @@ async def generate_cp(message: types.Message, state: FSMContext):
         result = await execute_tool(
             tool_id=ToolIds.SALES_SCRIPT,
             user_id=message.from_user.id,
-            input_data={"type": "commercial_proposal", **data},
+            input_data={
+                "product": data.get("product", ""),
+                "client": data.get("client", ""),
+                "audience": data.get("client", ""),
+                "average_check": data.get("price", ""),
+                "communication_format": "Коммерческое предложение",
+                "objections": f"Компания: {data.get('company', '')}\nПроблема: {data.get('problem', '')}"
+            },
             session=None,
             mode="initial"
         )
@@ -468,7 +475,14 @@ async def generate_reply(message: types.Message, state: FSMContext):
         result = await execute_tool(
             tool_id=ToolIds.SALES_SCRIPT,
             user_id=message.from_user.id,
-            input_data={"type": "client_reply", **data},
+            input_data={
+                "product": "Ответ клиенту",
+                "client": "Клиент",
+                "audience": "Клиент",
+                "average_check": "0",
+                "communication_format": "Переписка",
+                "objections": f"Вопрос клиента: {data.get('question', '')}\nКонтекст: {data.get('context', '')}"
+            },
             session=None,
             mode="initial"
         )
@@ -544,7 +558,14 @@ async def generate_analysis(message: types.Message, state: FSMContext):
         result = await execute_tool(
             tool_id=ToolIds.SALES_SCRIPT,
             user_id=message.from_user.id,
-            input_data={"type": "analysis", "text": text},
+            input_data={
+                "product": "Анализ переписки",
+                "client": "Менеджер",
+                "audience": "Менеджер по продажам",
+                "average_check": "0",
+                "communication_format": "Переписка",
+                "objections": f"Проанализируй этот диалог и дай рекомендации:\n\n{text}"
+            },
             session=None,
             mode="initial"
         )
@@ -629,7 +650,14 @@ async def generate_objections(message: types.Message, state: FSMContext):
         result = await execute_tool(
             tool_id=ToolIds.SALES_SCRIPT,
             user_id=message.from_user.id,
-            input_data={"type": "objections", **data},
+            input_data={
+                "product": data.get("product", ""),
+                "client": "Клиент",
+                "audience": "Клиент",
+                "average_check": "0",
+                "communication_format": "Переписка",
+                "objections": data.get("objections", "")
+            },
             session=None,
             mode="initial"
         )
@@ -963,428 +991,4 @@ async def generate_image_result(message: types.Message, state: FSMContext):
 async def cancel_image(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(ImageStates.menu)
-    await message.answer("❌ Отменено.", reply_markup=get_images_menu_keyboard())
-
-
-@router.callback_query(F.data == "image_new")
-async def image_new(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.delete()
-    await enter_image(callback.message, state)
-    await callback.answer()
-
-
-@router.callback_query(F.data == "image_menu")
-async def image_menu(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.delete()
-    await state.clear()
-    await callback.message.answer("👋 Главное меню", reply_markup=get_main_menu())
-    await callback.answer()
-
-
-# ==================== AI АССИСТЕНТ ====================
-
-@router.message(F.text == "🤖 AI Ассистент")
-async def enter_assistant(message: types.Message, state: FSMContext):
-    await state.clear()
-    await state.set_state(AssistantStates.menu)
-    await message.answer(
-        "🤖 **AI Ассистент**\n\n"
-        "Напишите ваш вопрос или задачу.\n"
-        "Я помогу с любым вопросом!",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
-    )
-
-
-@router.message(StateFilter(AssistantStates.waiting_question))
-async def assistant_question(message: types.Message, state: FSMContext):
-    if message.text == "⬅️ Назад":
-        await cancel_assistant(message, state)
-        return
-
-    if len(message.text) < 3:
-        await message.answer("❌ Вопрос слишком короткий. Напишите подробнее.")
-        return
-
-    await state.update_data(question=message.text)
-    await generate_assistant(message, state)
-
-
-async def generate_assistant(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    question = data.get("question", "")
-
-    loading = await message.answer("🤔 Думаю...")
-
-    try:
-        result = await execute_tool(
-            tool_id=ToolIds.ASSISTANT,
-            user_id=message.from_user.id,
-            input_data={
-                "message": question,
-                "context": "",
-                "history": []
-            },
-            session=None,
-            mode="initial"
-        )
-
-        try:
-            await loading.delete()
-        except Exception:
-            pass
-
-        await send_pipeline_result(
-            message,
-            state,
-            result,
-            "🤖 **AI Ассистент**",
-            None
-        )
-
-    except Exception as e:
-        try:
-            await loading.delete()
-        except Exception:
-            pass
-        logger.error(f"Ошибка AI Assistant: {e}")
-        await message.answer("❌ Произошла ошибка. Попробуйте позже.")
-
-
-async def cancel_assistant(message: types.Message, state: FSMContext):
-    await state.clear()
-    await state.set_state(AssistantStates.menu)
-    await message.answer("❌ Отменено.", reply_markup=get_main_menu())
-
-
-# ==================== МАРКЕТПЛЕЙС ====================
-
-@router.message(F.text == "🛒 Маркетплейсы")
-async def enter_marketplace(message: types.Message, state: FSMContext):
-    await state.clear()
-    await state.set_state(MarketplaceStates.menu)
-    await message.answer(
-        "🛒 **Маркетплейсы**\n\n"
-        "**Шаг 1 из 4**\n"
-        "Выберите площадку:",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
-    )
-
-
-@router.message(StateFilter(MarketplaceStates.platform))
-async def marketplace_platform(message: types.Message, state: FSMContext):
-    if message.text == "⬅️ Назад":
-        await cancel_marketplace(message, state)
-        return
-    await state.update_data(platform=message.text)
-    await state.set_state(MarketplaceStates.task)
-    await message.answer(
-        "**Шаг 2 из 4**\n"
-        "Что нужно сделать?\n\n"
-        "Примеры:\n"
-        "• создать карточку товара\n"
-        "• написать описание\n"
-        "• улучшить название\n"
-        "• сделать SEO-текст\n"
-        "• ответить клиенту",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
-    )
-
-
-@router.message(StateFilter(MarketplaceStates.task))
-async def marketplace_task(message: types.Message, state: FSMContext):
-    if message.text == "⬅️ Назад":
-        await cancel_marketplace(message, state)
-        return
-    await state.update_data(task=message.text)
-    await state.set_state(MarketplaceStates.category)
-    await message.answer(
-        "**Шаг 3 из 4**\n"
-        "Категория товара?",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
-    )
-
-
-@router.message(StateFilter(MarketplaceStates.category))
-async def marketplace_category(message: types.Message, state: FSMContext):
-    if message.text == "⬅️ Назад":
-        await cancel_marketplace(message, state)
-        return
-    await state.update_data(category=message.text)
-    await state.set_state(MarketplaceStates.product_info)
-    await message.answer(
-        "**Шаг 4 из 4**\n"
-        "Информация о товаре:",
-        reply_markup=get_back_to_menu_keyboard(),
-        parse_mode="HTML"
-    )
-
-
-@router.message(StateFilter(MarketplaceStates.product_info))
-async def marketplace_product_info(message: types.Message, state: FSMContext):
-    if message.text == "⬅️ Назад":
-        await cancel_marketplace(message, state)
-        return
-    await state.update_data(product_info=message.text)
-    await generate_marketplace(message, state)
-
-
-async def generate_marketplace(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    required = ["platform", "task", "category", "product_info"]
-    if any(f not in data for f in required):
-        await message.answer("⚠️ Заполните все шаги.")
-        return
-
-    loading = await message.answer("⏳ Генерирую...")
-
-    try:
-        result = await execute_tool(
-            tool_id=ToolIds.MARKETPLACE,
-            user_id=message.from_user.id,
-            input_data=data,
-            session=None,
-            mode="initial"
-        )
-
-        try:
-            await loading.delete()
-        except Exception:
-            pass
-
-        await send_pipeline_result(
-            message,
-            state,
-            result,
-            "🛒 **Результат**",
-            None
-        )
-
-    except Exception as e:
-        try:
-            await loading.delete()
-        except Exception:
-            pass
-        logger.error(f"Ошибка Marketplace: {e}")
-        await message.answer("❌ Ошибка. Попробуйте позже.")
-
-
-async def cancel_marketplace(message: types.Message, state: FSMContext):
-    await state.clear()
-    await state.set_state(MarketplaceStates.menu)
-    await message.answer("❌ Отменено.", reply_markup=get_main_menu())
-
-
-# ==================== КАБИНЕТ ====================
-
-@router.message(F.text == "👤 Кабинет")
-async def user_cabinet(message: types.Message, state: FSMContext):
-    await state.clear()
-
-    tariff_id = await get_user_tariff(message.from_user.id)
-    tariff = get_tariff(tariff_id.value)
-
-    text_used = await get_user_usage_today(message.from_user.id, ResponseType.TEXT)
-    image_used = await get_user_usage_today(message.from_user.id, ResponseType.IMAGE)
-
-    text_limit = tariff.get("text_limit", 0)
-    image_limit = tariff.get("image_limit", 0)
-
-    text_remaining = max(0, text_limit - text_used)
-    image_remaining = max(0, image_limit - image_used)
-
-    end_date = await get_subscription_end_date(message.from_user.id)
-
-    text = f"👤 **Ваш кабинет**\n\n"
-    text += f"📊 **Тариф:** {tariff.get('name', 'FREE')}\n"
-    text += f"💳 **Стоимость:** {tariff.get('price', 0)} ₽ / {tariff.get('period', 'месяц')}\n"
-
-    if end_date:
-        text += f"📅 Активен до: {end_date.strftime('%d.%m.%Y')}\n"
-    else:
-        text += f"📅 Бессрочный (FREE)\n"
-
-    text += f"\n📝 **Тексты:**\n"
-    text += f"  Использовано: {text_used} / {text_limit}\n"
-    text += f"  Осталось: {text_remaining}\n\n"
-
-    text += f"🖼 **Изображения:**\n"
-    text += f"  Использовано: {image_used} / {image_limit}\n"
-    text += f"  Осталось: {image_remaining}\n\n"
-
-    text += f"📅 **Доступные инструменты:**\n"
-    text += f"  ✅ Продажи\n"
-    text += f"  ✅ Маркетинг\n"
-    text += f"  ✅ Изображения\n"
-    text += f"  ✅ AI Ассистент\n"
-    text += f"  ✅ Маркетплейс\n\n"
-
-    text += f"💎 Для смены тарифа нажмите «Тарифы»"
-
-    await message.answer(text, parse_mode="HTML")
-
-
-# ==================== ТАРИФЫ ====================
-
-@router.message(F.text == "💎 Тарифы")
-async def show_tariffs(message: types.Message, state: FSMContext):
-    await state.clear()
-
-    text = "🚀 **ШТАБ AI — Тарифы**\n\n"
-    text += "Выберите подходящий тариф:\n\n"
-
-    for tariff_id, tariff in get_all_tariffs().items():
-        text += f"{tariff['color']} **{tariff['name']}**\n"
-        text += f"   💰 {tariff['price']} ₽ / {tariff['period']}\n"
-        text += f"   📝 {tariff['text_limit']} текстов / день\n"
-        text += f"   🖼 {tariff['image_limit']} изображений / день\n"
-        text += f"   {tariff['description']}\n\n"
-
-    await message.answer(
-        text,
-        reply_markup=get_tariffs_keyboard(),
-        parse_mode="HTML"
-    )
-
-
-@router.callback_query(F.data.startswith("tariff_"))
-async def tariff_selected(callback: types.CallbackQuery, state: FSMContext):
-    tariff_id = callback.data.split("_")[1]
-    tariff = get_tariff(tariff_id)
-
-    if tariff["price"] == 0:
-        current_tariff = await get_user_tariff(callback.from_user.id)
-        if current_tariff.value == "free":
-            await callback.message.edit_text(
-                "⚪ **FREE**\n\n"
-                "Бесплатный тариф уже активен!\n\n"
-                "📝 3 текста / день\n"
-                "🖼 1 изображение / день",
-                parse_mode="HTML"
-            )
-        else:
-            await callback.message.edit_text(
-                "⚪ **FREE**\n\n"
-                "Бесплатный тариф доступен всем новым пользователям.\n"
-                "Вы можете перейти на FREE в любой момент.\n\n"
-                "📝 3 текста / день\n"
-                "🖼 1 изображение / день",
-                parse_mode="HTML"
-            )
-        await callback.answer()
-        return
-
-    await callback.message.edit_text(
-        f"💎 **{tariff['name']}** — {tariff['price']} ₽ / {tariff['period']}\n\n"
-        f"📝 {tariff['text_limit']} текстов / день\n"
-        f"🖼 {tariff['image_limit']} изображений / день\n\n"
-        f"🚧 Оплата будет доступна в ближайшее время.\n"
-        f"Способы оплаты: Telegram Stars, ЮKassa",
-        parse_mode="HTML"
-    )
-    await callback.answer()
-
-
-# ==================== АДМИН ====================
-
-@router.message(Command("admin"))
-async def admin_panel(message: types.Message):
-    if not is_admin(message.from_user.id):
-        await message.answer("⛔ Доступ запрещён")
-        return
-
-    from admin import get_admin_stats
-    stats = await get_admin_stats()
-
-    text = "📊 **ШТАБ AI — Админ панель**\n\n"
-    text += f"👥 **Пользователей:** {stats['total']}\n"
-    text += f"  ⚪ FREE: {stats.get('free', 0)}\n"
-    text += f"  🟢 LITE: {stats.get('lite', 0)}\n"
-    text += f"  🔵 PRO: {stats.get('pro', 0)}\n"
-    text += f"  🟣 BUSINESS: {stats.get('business', 0)}\n\n"
-    text += f"💰 **Расход AI:** {stats['ai_cost']:.2f} ₽\n"
-    text += f"💳 **Доход:** {stats['revenue']:.2f} ₽"
-
-    await message.answer(text, parse_mode="HTML")
-
-
-# ==================== ОБЩИЙ НАЗАД ====================
-
-@router.message(F.text == "⬅️ Назад")
-async def back_to_main(message: types.Message, state: FSMContext):
-    current = await state.get_state()
-
-    sales_states = [
-        SalesStates.script_product,
-        SalesStates.script_client,
-        SalesStates.script_average_check,
-        SalesStates.script_format,
-        SalesStates.script_objections,
-        SalesStates.script_result,
-        SalesStates.cp_company,
-        SalesStates.cp_client,
-        SalesStates.cp_product,
-        SalesStates.cp_problem,
-        SalesStates.cp_price,
-        SalesStates.cp_result,
-        SalesStates.reply_question,
-        SalesStates.reply_context,
-        SalesStates.reply_result,
-        SalesStates.analysis_text,
-        SalesStates.analysis_result,
-        SalesStates.objection_product,
-        SalesStates.objection_list,
-        SalesStates.objection_result,
-    ]
-    marketing_states = [
-        MarketingStates.post_product,
-        MarketingStates.post_audience,
-        MarketingStates.post_platform,
-        MarketingStates.post_style,
-        MarketingStates.post_result
-    ]
-    image_states = [
-        ImageStates.description,
-        ImageStates.purpose,
-        ImageStates.style,
-        ImageStates.size,
-        ImageStates.result
-    ]
-    marketplace_states = [
-        MarketplaceStates.platform,
-        MarketplaceStates.task,
-        MarketplaceStates.category,
-        MarketplaceStates.product_info,
-        MarketplaceStates.result
-    ]
-    assistant_states = [
-        AssistantStates.waiting_question,
-        AssistantStates.result
-    ]
-
-    if current in sales_states:
-        await state.clear()
-        await state.set_state(SalesStates.menu)
-        await message.answer("📊 **Продажи**", reply_markup=get_sales_menu_keyboard(), parse_mode="HTML")
-    elif current in marketing_states:
-        await state.clear()
-        await state.set_state(MarketingStates.menu)
-        await message.answer("📊 **Маркетинг**", reply_markup=get_marketing_menu_keyboard(), parse_mode="HTML")
-    elif current in image_states:
-        await state.clear()
-        await state.set_state(ImageStates.menu)
-        await message.answer("🖼 **Изображения**", reply_markup=get_images_menu_keyboard(), parse_mode="HTML")
-    elif current in marketplace_states:
-        await state.clear()
-        await state.set_state(MarketplaceStates.menu)
-        await message.answer("🛒 **Маркетплейсы**", reply_markup=get_back_to_menu_keyboard(), parse_mode="HTML")
-    elif current in assistant_states:
-        await state.clear()
-        await state.set_state(AssistantStates.menu)
-        await message.answer("🤖 **AI Ассистент**", reply_markup=get_back_to_menu_keyboard(), parse_mode="HTML")
-    else:
-        await state.clear()
-        await message.answer("👋 Главное меню", reply_markup=get_main_menu())
+    await message.answer("❌ Отменено.", reply_markup=get_images_menu_keyboard

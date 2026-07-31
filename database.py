@@ -58,9 +58,9 @@ class DatabaseConnectionManager:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 amount INTEGER NOT NULL,
-                type TEXT NOT NULL,  -- 'purchase', 'bonus', 'refund', 'spend'
+                type TEXT NOT NULL,
                 description TEXT,
-                package TEXT,  -- название пакета токенов
+                package TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(telegram_id)
             )
@@ -145,7 +145,7 @@ class DatabaseConnectionManager:
                 user_id INTEGER NOT NULL,
                 provider TEXT NOT NULL,
                 provider_payment_id TEXT,
-                tariff TEXT NOT NULL,
+                tariff TEXT,
                 period TEXT,
                 amount REAL NOT NULL,
                 currency TEXT DEFAULT 'RUB',
@@ -185,6 +185,117 @@ class DatabaseConnectionManager:
             await self._pool.close()
             self._pool = None
             logger.info("Соединение с БД закрыто")
+
+    # ============================================================
+    # TOKEN OPERATIONS (ДОБАВЛЕНЫ)
+    # ============================================================
+
+    async def get_user_tokens(self, user_id: int) -> int:
+        """Получить баланс токенов пользователя."""
+        async with self.connection() as conn:
+            cursor = await conn.execute(
+                "SELECT tokens FROM users WHERE telegram_id = ?",
+                (user_id,)
+            )
+            row = await cursor.fetchone()
+            return row["tokens"] if row else 0
+
+    async def add_tokens(self, user_id: int, amount: int, description: str = None) -> bool:
+        """Добавить токены пользователю."""
+        if amount <= 0:
+            return False
+
+        async with self.connection() as conn:
+            try:
+                await conn.execute(
+                    "UPDATE users SET tokens = tokens + ? WHERE telegram_id = ?",
+                    (amount, user_id)
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO token_transactions (user_id, amount, type, description)
+                    VALUES (?, ?, 'purchase', ?)
+                    """,
+                    (user_id, amount, description or f"Пополнение на {amount} токенов")
+                )
+                await conn.commit()
+                logger.info(f"💰 Добавлено {amount} токенов пользователю {user_id}")
+                return True
+            except Exception as e:
+                logger.error(f"Ошибка добавления токенов: {e}")
+                return False
+
+    async def deduct_tokens(self, user_id: int, amount: int, description: str = None) -> bool:
+        """Списать токены у пользователя."""
+        if amount <= 0:
+            return True
+
+        async with self.connection() as conn:
+            # Проверяем баланс
+            current = await self.get_user_tokens(user_id)
+            if current < amount:
+                logger.warning(f"Недостаточно токенов у {user_id}: {current} < {amount}")
+                return False
+
+            try:
+                await conn.execute(
+                    "UPDATE users SET tokens = tokens - ? WHERE telegram_id = ? AND tokens >= ?",
+                    (amount, user_id, amount)
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO token_transactions (user_id, amount, type, description)
+                    VALUES (?, ?, 'spend', ?)
+                    """,
+                    (user_id, -amount, description or f"Списание {amount} токенов")
+                )
+                await conn.commit()
+                logger.info(f"💸 Списано {amount} токенов у пользователя {user_id}")
+                return True
+            except Exception as e:
+                logger.error(f"Ошибка списания токенов: {e}")
+                return False
+
+    async def refund_tokens(self, user_id: int, amount: int, description: str = None) -> bool:
+        """Вернуть токены пользователю (при ошибке)."""
+        if amount <= 0:
+            return False
+
+        async with self.connection() as conn:
+            try:
+                await conn.execute(
+                    "UPDATE users SET tokens = tokens + ? WHERE telegram_id = ?",
+                    (amount, user_id)
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO token_transactions (user_id, amount, type, description)
+                    VALUES (?, ?, 'refund', ?)
+                    """,
+                    (user_id, amount, description or f"Возврат {amount} токенов")
+                )
+                await conn.commit()
+                logger.info(f"🔄 Возвращено {amount} токенов пользователю {user_id}")
+                return True
+            except Exception as e:
+                logger.error(f"Ошибка возврата токенов: {e}")
+                return False
+
+    async def get_token_transactions(self, user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+        """Получить историю транзакций пользователя."""
+        async with self.connection() as conn:
+            cursor = await conn.execute(
+                """
+                SELECT id, amount, type, description, package, created_at
+                FROM token_transactions
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (user_id, limit)
+            )
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
 
 
 db_manager = DatabaseConnectionManager(settings.DB_PATH)
@@ -271,7 +382,7 @@ class UserRepository:
     async def add_user(self, telegram_id: int, username: Optional[str], first_name: Optional[str]) -> bool:
         async with db_manager.connection() as conn:
             cursor = await conn.execute(
-                "INSERT OR IGNORE INTO users (telegram_id, username, first_name, last_activity) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+                "INSERT OR IGNORE INTO users (telegram_id, username, first_name, last_activity, tokens) VALUES (?, ?, ?, CURRENT_TIMESTAMP, 100)",
                 (telegram_id, username, first_name)
             )
             await conn.commit()
@@ -313,128 +424,27 @@ class TokenRepository:
 
     async def get_user_tokens(self, user_id: int) -> int:
         """Получить количество токенов у пользователя."""
-        async with db_manager.connection() as conn:
-            cursor = await conn.execute(
-                "SELECT tokens FROM users WHERE telegram_id = ?",
-                (user_id,)
-            )
-            row = await cursor.fetchone()
-            return row["tokens"] if row else 0
+        return await db_manager.get_user_tokens(user_id)
 
     async def add_tokens(self, user_id: int, amount: int, description: str = None, package: str = None) -> bool:
-        """
-        Добавить токены пользователю.
-        
-        Args:
-            user_id: ID пользователя
-            amount: количество токенов
-            description: описание операции
-            package: название пакета
-        """
-        async with db_manager.connection() as conn:
-            # Обновляем баланс
-            await conn.execute(
-                "UPDATE users SET tokens = tokens + ? WHERE telegram_id = ?",
-                (amount, user_id)
-            )
-            
-            # Записываем транзакцию
-            await conn.execute(
-                """
-                INSERT INTO token_transactions (user_id, amount, type, description, package)
-                VALUES (?, ?, 'purchase', ?, ?)
-                """,
-                (user_id, amount, description, package)
-            )
-            
-            await conn.commit()
-            return True
+        """Добавить токены пользователю."""
+        return await db_manager.add_tokens(user_id, amount, description)
 
     async def add_bonus_tokens(self, user_id: int, amount: int, description: str = None) -> bool:
         """Добавить бонусные токены пользователю."""
-        async with db_manager.connection() as conn:
-            await conn.execute(
-                "UPDATE users SET tokens = tokens + ? WHERE telegram_id = ?",
-                (amount, user_id)
-            )
-            
-            await conn.execute(
-                """
-                INSERT INTO token_transactions (user_id, amount, type, description)
-                VALUES (?, ?, 'bonus', ?)
-                """,
-                (user_id, amount, description)
-            )
-            
-            await conn.commit()
-            return True
+        return await db_manager.add_tokens(user_id, amount, f"Бонус: {description}")
 
     async def deduct_tokens(self, user_id: int, amount: int, description: str = None) -> bool:
-        """
-        Списать токены у пользователя.
-        
-        Returns:
-            True если списаны, False если недостаточно токенов
-        """
-        if amount <= 0:
-            return True
-            
-        async with db_manager.connection() as conn:
-            # Проверяем и списываем
-            cursor = await conn.execute(
-                "UPDATE users SET tokens = tokens - ? WHERE telegram_id = ? AND tokens >= ?",
-                (amount, user_id, amount)
-            )
-            
-            if cursor.rowcount == 0:
-                return False
-            
-            # Записываем транзакцию
-            await conn.execute(
-                """
-                INSERT INTO token_transactions (user_id, amount, type, description)
-                VALUES (?, ?, 'spend', ?)
-                """,
-                (user_id, amount, description)
-            )
-            
-            await conn.commit()
-            return True
+        """Списать токены у пользователя."""
+        return await db_manager.deduct_tokens(user_id, amount, description)
 
     async def refund_tokens(self, user_id: int, amount: int, description: str = None) -> bool:
-        """Вернуть токены пользователю (при ошибке)."""
-        async with db_manager.connection() as conn:
-            await conn.execute(
-                "UPDATE users SET tokens = tokens + ? WHERE telegram_id = ?",
-                (amount, user_id)
-            )
-            
-            await conn.execute(
-                """
-                INSERT INTO token_transactions (user_id, amount, type, description)
-                VALUES (?, ?, 'refund', ?)
-                """,
-                (user_id, amount, description)
-            )
-            
-            await conn.commit()
-            return True
+        """Вернуть токены пользователю."""
+        return await db_manager.refund_tokens(user_id, amount, description)
 
     async def get_token_transactions(self, user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
         """Получить историю транзакций пользователя."""
-        async with db_manager.connection() as conn:
-            cursor = await conn.execute(
-                """
-                SELECT id, amount, type, description, package, created_at
-                FROM token_transactions
-                WHERE user_id = ?
-                ORDER BY created_at DESC
-                LIMIT ?
-                """,
-                (user_id, limit)
-            )
-            rows = await cursor.fetchall()
-            return [dict(row) for row in rows]
+        return await db_manager.get_token_transactions(user_id, limit)
 
 
 # ============================================================

@@ -199,7 +199,7 @@ class ImageProvider(AIProvider):
 
 
 # ============================================================
-# VIDEO PROVIDER (GenAPI) С ЛОГАМИ
+# VIDEO PROVIDER (GenAPI)
 # ============================================================
 
 class VideoProvider(AIProvider):
@@ -208,11 +208,6 @@ class VideoProvider(AIProvider):
         self.api_key = settings.GENAPI_API_KEY
         self.base_url = settings.GENAPI_BASE_URL
 
-    @retry(
-        stop=stop_after_attempt(2),
-        wait=wait_exponential(multiplier=1, min=2, max=8),
-        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
-    )
     async def _make_request(self, prompt: str, model: str, **kwargs) -> Dict[str, Any]:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -250,31 +245,17 @@ class VideoProvider(AIProvider):
         size = kwargs.get("size", "1280x720")
 
         try:
-            # ============================================================
-            # ЛОГИРУЕМ ВСЁ
-            # ============================================================
-            logger.info(f"🔍=== VIDEO GENERATE START ===")
-            logger.info(f"🔍 prompt: {prompt[:100]}")
-            logger.info(f"🔍 model: {model}")
-            logger.info(f"🔍 duration: {duration}")
-            logger.info(f"🔍 size: {size}")
-            logger.info(f"🔍 kwargs: {kwargs}")
-            
             start_time = asyncio.get_event_loop().time()
             
-            # Убираем уже использованные аргументы из kwargs
             kwargs_copy = kwargs.copy()
             kwargs_copy.pop("model", None)
             kwargs_copy.pop("duration", None)
             kwargs_copy.pop("size", None)
             
-            logger.info(f"🔍 kwargs_copy: {kwargs_copy}")
-            logger.info(f"🔍=== CALLING _make_request ===")
-            
             result = await self._make_request(prompt=prompt, model=model, **kwargs_copy)
             elapsed = asyncio.get_event_loop().time() - start_time
 
-            logger.info(f"✅ Video API ответ: {result}")
+            logger.info(f"Video API ответ: {result}")
 
             if not result:
                 return AIResponse(
@@ -307,7 +288,7 @@ class VideoProvider(AIProvider):
                     video_url = result["videos"][0].get("url")
 
             if not video_url:
-                logger.error(f"❌ Не удалось найти URL видео в ответе: {result}")
+                logger.error(f"Не удалось найти URL видео в ответе: {result}")
                 return AIResponse(
                     content="",
                     provider="genapi_video",
@@ -336,30 +317,26 @@ class VideoProvider(AIProvider):
                 metadata=response_data
             )
 
-except httpx.HTTPStatusError as e:
-    logger.error(f"❌ HTTP ошибка Video API: {e.response.status_code}")
-    logger.error(f"❌ Response text: {e.response.text}")
-    return AIResponse(
-        content="",
-        provider="genapi_video",
-        model=model,
-        status=GenerationStatus.ERROR,
-        response_type=ResponseType.VIDEO,
-        metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:500]}"}
-    )
-except Exception as e:
-    logger.error(f"❌ Ошибка генерации видео: {e}")
-    logger.error(f"❌ Тип ошибки: {type(e)}")
-    import traceback
-    logger.error(f"❌ Traceback: {traceback.format_exc()}")
-    return AIResponse(
-        content="",
-        provider="genapi_video",
-        model=model,
-        status=GenerationStatus.ERROR,
-        response_type=ResponseType.VIDEO,
-        metadata={"error": str(e)}
-    )
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP ошибка Video API: {e.response.status_code} - {e.response.text}")
+            return AIResponse(
+                content="",
+                provider="genapi_video",
+                model=model,
+                status=GenerationStatus.ERROR,
+                response_type=ResponseType.VIDEO,
+                metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
+            )
+        except Exception as e:
+            logger.error(f"Ошибка генерации видео: {e}")
+            return AIResponse(
+                content="",
+                provider="genapi_video",
+                model=model,
+                status=GenerationStatus.ERROR,
+                response_type=ResponseType.VIDEO,
+                metadata={"error": str(e)}
+            )
 
 
 # ============================================================

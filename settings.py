@@ -1,79 +1,81 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+# ============================================================
+# TELEGRAM
+# ============================================================
+BOT_TOKEN=ваш_токен_бота
+BOT_USERNAME=@ShtabProBot
 
+# ============================================================
+# AI PROVIDER — GENAPI (ВСЁ В ОДНОМ: ТЕКСТ, ИЗОБРАЖЕНИЯ, ВИДЕО)
+# ============================================================
+GENAPI_API_KEY=sk-sh5NO6Y51I6apX2Y16ZOmIskyvjpSPydUXHNRGtKH6g6rWDSWiaSPhAEnt7E
+GENAPI_BASE_URL=https://api.gen-api.ru/v1
 
-class Settings(BaseSettings):
-    # ============================================================
-    # TELEGRAM
-    # ============================================================
-    bot_token: str
-    bot_username: str = "@ShtabProBot"
+# ============================================================
+# ADMIN
+# ============================================================
+ADMIN_TELEGRAM_ID=548576688
 
-    # ============================================================
-    # AI PROVIDER
-    # ============================================================
-    provod_api_key: str
-    provod_base_url: str = "https://api.provod.ai/v1"
+# ============================================================
+# DATABASE
+# ============================================================
+DB_PATH=ai_shtab.db
 
-    # ============================================================
-    # ADMIN
-    # ============================================================
-    admin_telegram_id: int = 548576688
+# ============================================================
+# AI SERVICE
+# ============================================================
+AI_TIMEOUT=60
+AI_MAX_RETRIES=3
 
-    # ============================================================
-    # DATABASE
-    # ============================================================
-    db_path: str = "ai_shtab.db"
+# ============================================================
+# MODELS — FREE (GenAPI)
+# ============================================================
+FREE_TEXT_MODEL=deepseek/deepseek-v4-flash
+FREE_IMAGE_MODEL=flux-schnell
+FREE_VIDEO_MODEL=ltx-video
 
-    # ============================================================
-    # AI SERVICE
-    # ============================================================
-    ai_timeout: int = 60
-    ai_max_retries: int = 3
+# ============================================================
+# MODELS — LITE (GenAPI)
+# ============================================================
+LITE_TEXT_MODEL=deepseek/deepseek-v4-pro
+LITE_IMAGE_MODEL=flux-dev
+LITE_VIDEO_MODEL=veo-3.1-lite
 
-    # ============================================================
-    # MODELS — FREE
-    # ============================================================
-    free_text_model: str = "deepseek/deepseek-v4-flash"
-    free_image_model: str = "google/gemini-3.1-flash-lite-image"
+# ============================================================
+# MODELS — PRO (GenAPI)
+# ============================================================
+PRO_TEXT_MODEL=openai/gpt-5.4-mini
+PRO_IMAGE_MODEL=flux-pro
+PRO_VIDEO_MODEL=veo-3.1
 
-    # ============================================================
-    # MODELS — LITE
-    # ============================================================
-    lite_text_model: str = "deepseek/deepseek-v4-pro"
-    lite_image_model: str = "google/gemini-3.1-flash-image"
+# ============================================================
+# MODELS — BUSINESS (GenAPI)
+# ============================================================
+BUSINESS_TEXT_MODEL=openai/gpt-5.5
+BUSINESS_IMAGE_MODEL=flux-pro
+BUSINESS_VIDEO_MODEL=veo-3.1
 
-    # ============================================================
-    # MODELS — PRO
-    # ============================================================
-    pro_text_model: str = "openai/gpt-5.4-mini"
-    pro_image_model: str = "google/gemini-3-pro-image"
+# ============================================================
+# LIMITS (текст и изображения — старые лимиты)
+# ============================================================
+FREE_TEXT_LIMIT=3
+FREE_IMAGE_LIMIT=1
 
-    # ============================================================
-    # MODELS — BUSINESS
-    # ============================================================
-    business_text_model: str = "openai/gpt-5.5"
-    business_image_model: str = "google/gemini-3-pro-image"
+LITE_TEXT_LIMIT=20
+LITE_IMAGE_LIMIT=5
 
-    # ============================================================
-    # LIMITS
-    # ============================================================
-    free_text_limit: int = 3
-    free_image_limit: int = 1
+PRO_TEXT_LIMIT=100
+PRO_IMAGE_LIMIT=20
 
-    lite_text_limit: int = 20
-    lite_image_limit: int = 5
+BUSINESS_TEXT_LIMIT=500
+BUSINESS_IMAGE_LIMIT=100
 
-    pro_text_limit: int = 100
-    pro_image_limit: int = 20
-
-    business_text_limit: int = 500
-    business_image_limit: int = 100
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
-    )
-
-
-settings = Settings()
+# ============================================================
+# ТОКЕНЫ — ПАКЕТЫ ДЛЯ ПОКУПКИ
+# ============================================================
+TOKEN_PACKAGES = {
+    "free": {"name": "💡 Пробный", "tokens": 10, "price": 0},
+    "starter": {"name": "⚡ Стартовый", "tokens": 50, "price": 100},
+    "optimal": {"name": "🚀 Оптимальный", "tokens": 250, "price": 500},
+    "pro": {"name": "💎 Профессиональный", "tokens": 700, "price": 1190},
+    "max": {"name": "👑 Максимальный", "tokens": 2000, "price": 3000},
+}

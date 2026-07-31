@@ -293,6 +293,38 @@ async def sales_menu(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+# ==================== ВОЗВРАТ В ГЛАВНОЕ МЕНЮ ИЗ МЕНЮ РАЗДЕЛОВ ====================
+
+@router.message(StateFilter(SalesStates.menu), F.text == "⬅️ Назад")
+async def back_from_sales_menu(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("👋 Главное меню", reply_markup=get_main_menu())
+
+
+@router.message(StateFilter(MarketingStates.menu), F.text == "⬅️ Назад")
+async def back_from_marketing_menu(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("👋 Главное меню", reply_markup=get_main_menu())
+
+
+@router.message(StateFilter(ImageStates.menu), F.text == "⬅️ Назад")
+async def back_from_image_menu(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("👋 Главное меню", reply_markup=get_main_menu())
+
+
+@router.message(StateFilter(MarketplaceStates.menu), F.text == "⬅️ Назад")
+async def back_from_marketplace_menu(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("👋 Главное меню", reply_markup=get_main_menu())
+
+
+@router.message(StateFilter(AssistantStates.menu), F.text == "⬅️ Назад")
+async def back_from_assistant_menu(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("👋 Главное меню", reply_markup=get_main_menu())
+
+
 # ==================== МАРКЕТИНГ ====================
 
 @router.message(F.text == "📈 Маркетинг")
@@ -453,7 +485,7 @@ async def share_post(callback: types.CallbackQuery, state: FSMContext):
 @router.message(F.text == "🖼 Изображения")
 async def enter_image(message: types.Message, state: FSMContext):
     await state.clear()
-    await state.set_state(ImageStates.description)
+    await state.set_state(ImageStates.menu)
     await message.answer(
         "🖼 **Генерация изображения**\n\n"
         "**Шаг 1 из 4**\nЧто нужно изобразить?",
@@ -541,7 +573,8 @@ async def generate_image_result(message: types.Message, state: FSMContext):
 
 async def cancel_image(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer("❌ Отменено.", reply_markup=get_main_menu())
+    await state.set_state(ImageStates.menu)
+    await message.answer("❌ Отменено.", reply_markup=get_images_menu_keyboard())
 
 
 @router.callback_query(F.data == "image_new")
@@ -564,7 +597,7 @@ async def image_menu(callback: types.CallbackQuery, state: FSMContext):
 @router.message(F.text == "🤖 AI Ассистент")
 async def enter_assistant(message: types.Message, state: FSMContext):
     await state.clear()
-    await state.set_state(AssistantStates.waiting_question)
+    await state.set_state(AssistantStates.menu)
     await message.answer(
         "🤖 **AI Ассистент**\n\n"
         "Напишите ваш вопрос или задачу.\n"
@@ -631,6 +664,7 @@ async def generate_assistant(message: types.Message, state: FSMContext):
 
 async def cancel_assistant(message: types.Message, state: FSMContext):
     await state.clear()
+    await state.set_state(AssistantStates.menu)
     await message.answer("❌ Отменено.", reply_markup=get_main_menu())
 
 
@@ -639,7 +673,7 @@ async def cancel_assistant(message: types.Message, state: FSMContext):
 @router.message(F.text == "🛒 Маркетплейсы")
 async def enter_marketplace(message: types.Message, state: FSMContext):
     await state.clear()
-    await state.set_state(MarketplaceStates.platform)
+    await state.set_state(MarketplaceStates.menu)
     await message.answer(
         "🛒 **Маркетплейсы**\n\n"
         "**Шаг 1 из 4**\n"
@@ -751,6 +785,7 @@ async def generate_marketplace(message: types.Message, state: FSMContext):
 
 async def cancel_marketplace(message: types.Message, state: FSMContext):
     await state.clear()
+    await state.set_state(MarketplaceStates.menu)
     await message.answer("❌ Отменено.", reply_markup=get_main_menu())
 
 
@@ -894,7 +929,6 @@ async def back_to_main(message: types.Message, state: FSMContext):
     current = await state.get_state()
 
     sales_states = [
-        SalesStates.menu,
         SalesStates.script_product,
         SalesStates.script_client,
         SalesStates.script_average_check,
@@ -903,7 +937,6 @@ async def back_to_main(message: types.Message, state: FSMContext):
         SalesStates.script_result
     ]
     marketing_states = [
-        MarketingStates.menu,
         MarketingStates.post_product,
         MarketingStates.post_audience,
         MarketingStates.post_platform,
@@ -911,7 +944,6 @@ async def back_to_main(message: types.Message, state: FSMContext):
         MarketingStates.post_result
     ]
     image_states = [
-        ImageStates.menu,
         ImageStates.description,
         ImageStates.purpose,
         ImageStates.style,
@@ -919,7 +951,6 @@ async def back_to_main(message: types.Message, state: FSMContext):
         ImageStates.result
     ]
     marketplace_states = [
-        MarketplaceStates.menu,
         MarketplaceStates.platform,
         MarketplaceStates.task,
         MarketplaceStates.category,
@@ -927,28 +958,10 @@ async def back_to_main(message: types.Message, state: FSMContext):
         MarketplaceStates.result
     ]
     assistant_states = [
-        AssistantStates.menu,
         AssistantStates.waiting_question,
         AssistantStates.result
     ]
 
     if current in sales_states:
         await state.clear()
-        await state.set_state(SalesStates.menu)
-        await message.answer("📊 **Продажи**", reply_markup=get_sales_menu_keyboard(), parse_mode="HTML")
-    elif current in marketing_states:
-        await state.clear()
-        await state.set_state(MarketingStates.menu)
-        await message.answer("📊 **Маркетинг**", reply_markup=get_marketing_menu_keyboard(), parse_mode="HTML")
-    elif current in image_states:
-        await state.clear()
-        await message.answer("🖼 **Изображения**", reply_markup=get_images_menu_keyboard(), parse_mode="HTML")
-    elif current in marketplace_states:
-        await state.clear()
-        await message.answer("🛒 **Маркетплейсы**", reply_markup=get_back_to_menu_keyboard(), parse_mode="HTML")
-    elif current in assistant_states:
-        await state.clear()
-        await message.answer("🤖 **AI Ассистент**", reply_markup=get_back_to_menu_keyboard(), parse_mode="HTML")
-    else:
-        await state.clear()
-        await message.answer("👋 Главное меню", reply_markup=get_main_menu())
+        await state.set_state(SalesStates.m

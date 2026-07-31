@@ -56,5 +56,10 @@ class Settings:
     BUSINESS_TEXT_LIMIT = int(os.getenv("BUSINESS_TEXT_LIMIT", "500"))
     BUSINESS_IMAGE_LIMIT = int(os.getenv("BUSINESS_IMAGE_LIMIT", "100"))
 
+    # Алиас для обратной совместимости (чтобы работало и settings.db_path, и settings.DB_PATH)
+    @property
+    def db_path(self):
+        return self.DB_PATH
+
 
 settings = Settings()

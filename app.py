@@ -39,7 +39,7 @@ class Application:
         logger.info("✅ Startup check пройден")
 
         self.bot = Bot(
-            token=settings.bot_token,
+            token=settings.BOT_TOKEN,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML)
         )
 

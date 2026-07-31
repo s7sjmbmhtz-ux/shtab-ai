@@ -51,7 +51,7 @@ class DatabaseConnectionManager:
         """)
 
         # ============================================================
-        # TOKEN TRANSACTIONS (история пополнений и списаний)
+        # TOKEN TRANSACTIONS
         # ============================================================
         await self._pool.execute("""
             CREATE TABLE IF NOT EXISTS token_transactions (
@@ -67,7 +67,7 @@ class DatabaseConnectionManager:
         """)
 
         # ============================================================
-        # REQUESTS (история)
+        # REQUESTS
         # ============================================================
         await self._pool.execute("""
             CREATE TABLE IF NOT EXISTS requests (
@@ -187,7 +187,7 @@ class DatabaseConnectionManager:
             logger.info("Соединение с БД закрыто")
 
     # ============================================================
-    # TOKEN OPERATIONS (ДОБАВЛЕНЫ)
+    # TOKEN OPERATIONS
     # ============================================================
 
     async def get_user_tokens(self, user_id: int) -> int:
@@ -231,7 +231,6 @@ class DatabaseConnectionManager:
             return True
 
         async with self.connection() as conn:
-            # Проверяем баланс
             current = await self.get_user_tokens(user_id)
             if current < amount:
                 logger.warning(f"Недостаточно токенов у {user_id}: {current} < {amount}")
@@ -257,7 +256,7 @@ class DatabaseConnectionManager:
                 return False
 
     async def refund_tokens(self, user_id: int, amount: int, description: str = None) -> bool:
-        """Вернуть токены пользователю (при ошибке)."""
+        """Вернуть токены пользователю."""
         if amount <= 0:
             return False
 
@@ -297,6 +296,86 @@ class DatabaseConnectionManager:
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
+    # ============================================================
+    # USER OPERATIONS
+    # ============================================================
+
+    async def set_user_tariff(self, user_id: int, tariff: str):
+        """Установить тариф пользователю."""
+        async with self.connection() as conn:
+            await conn.execute(
+                "UPDATE users SET tariff = ? WHERE telegram_id = ?",
+                (tariff, user_id)
+            )
+            await conn.commit()
+
+    async def get_user_tariff(self, user_id: int) -> str:
+        """Получить тариф пользователя."""
+        async with self.connection() as conn:
+            cursor = await conn.execute(
+                "SELECT tariff FROM users WHERE telegram_id = ?",
+                (user_id,)
+            )
+            row = await cursor.fetchone()
+            return row["tariff"] if row else "free"
+
+    async def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Получить данные пользователя."""
+        async with self.connection() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM users WHERE telegram_id = ?",
+                (user_id,)
+            )
+            row = await cursor.fetchone()
+            return dict(row) if row else None
+
+    async def add_user(self, user_id: int, username: str = None, first_name: str = None) -> bool:
+        """Добавить пользователя."""
+        async with self.connection() as conn:
+            try:
+                await conn.execute(
+                    """
+                    INSERT OR IGNORE INTO users (telegram_id, username, first_name, tokens)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (user_id, username, first_name, 100)
+                )
+                await conn.commit()
+                return True
+            except Exception as e:
+                logger.error(f"Ошибка добавления пользователя: {e}")
+                return False
+
+    async def update_activity(self, user_id: int) -> bool:
+        """Обновить активность пользователя."""
+        async with self.connection() as conn:
+            try:
+                await conn.execute(
+                    "UPDATE users SET last_activity = CURRENT_TIMESTAMP WHERE telegram_id = ?",
+                    (user_id,)
+                )
+                await conn.commit()
+                return True
+            except Exception as e:
+                logger.error(f"Ошибка обновления активности: {e}")
+                return False
+
+    async def get_subscription_end_date(self, user_id: int) -> Optional[str]:
+        """Получить дату окончания подписки."""
+        async with self.connection() as conn:
+            cursor = await conn.execute(
+                """
+                SELECT end_date FROM subscriptions
+                WHERE user_id = ? AND status = 'active'
+                ORDER BY end_date DESC LIMIT 1
+                """,
+                (user_id,)
+            )
+            row = await cursor.fetchone()
+            return row["end_date"] if row else None
+
+
+# ==================== ГЛОБАЛЬНЫЙ ЭКЗЕМПЛЯР ====================
 
 db_manager = DatabaseConnectionManager(settings.DB_PATH)
 
@@ -380,39 +459,25 @@ async def run_migrations() -> bool:
 
 class UserRepository:
     async def add_user(self, telegram_id: int, username: Optional[str], first_name: Optional[str]) -> bool:
-        async with db_manager.connection() as conn:
-            cursor = await conn.execute(
-                "INSERT OR IGNORE INTO users (telegram_id, username, first_name, last_activity, tokens) VALUES (?, ?, ?, CURRENT_TIMESTAMP, 100)",
-                (telegram_id, username, first_name)
-            )
-            await conn.commit()
-            return cursor.rowcount > 0
+        return await db_manager.add_user(telegram_id, username, first_name)
 
     async def get_user(self, telegram_id: int) -> Optional[User]:
-        async with db_manager.connection() as conn:
-            cursor = await conn.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
-            row = await cursor.fetchone()
-            if row:
-                return User(
-                    id=row["id"],
-                    telegram_id=row["telegram_id"],
-                    username=row["username"],
-                    first_name=row["first_name"],
-                    tariff=row["tariff"],
-                    is_admin=row["is_admin"] == 1,
-                    tokens=row["tokens"] if "tokens" in row.keys() else 0,
-                    created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
-                )
-            return None
+        data = await db_manager.get_user(telegram_id)
+        if data:
+            return User(
+                id=data["id"],
+                telegram_id=data["telegram_id"],
+                username=data["username"],
+                first_name=data["first_name"],
+                tariff=data["tariff"],
+                is_admin=data["is_admin"] == 1,
+                tokens=data.get("tokens", 0),
+                created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else None
+            )
+        return None
 
     async def update_activity(self, telegram_id: int) -> bool:
-        async with db_manager.connection() as conn:
-            cursor = await conn.execute(
-                "UPDATE users SET last_activity = CURRENT_TIMESTAMP WHERE telegram_id = ?",
-                (telegram_id,)
-            )
-            await conn.commit()
-            return cursor.rowcount > 0
+        return await db_manager.update_activity(telegram_id)
 
 
 # ============================================================
@@ -420,30 +485,22 @@ class UserRepository:
 # ============================================================
 
 class TokenRepository:
-    """Репозиторий для работы с токенами пользователей."""
-
     async def get_user_tokens(self, user_id: int) -> int:
-        """Получить количество токенов у пользователя."""
         return await db_manager.get_user_tokens(user_id)
 
     async def add_tokens(self, user_id: int, amount: int, description: str = None, package: str = None) -> bool:
-        """Добавить токены пользователю."""
         return await db_manager.add_tokens(user_id, amount, description)
 
     async def add_bonus_tokens(self, user_id: int, amount: int, description: str = None) -> bool:
-        """Добавить бонусные токены пользователю."""
         return await db_manager.add_tokens(user_id, amount, f"Бонус: {description}")
 
     async def deduct_tokens(self, user_id: int, amount: int, description: str = None) -> bool:
-        """Списать токены у пользователя."""
         return await db_manager.deduct_tokens(user_id, amount, description)
 
     async def refund_tokens(self, user_id: int, amount: int, description: str = None) -> bool:
-        """Вернуть токены пользователю."""
         return await db_manager.refund_tokens(user_id, amount, description)
 
     async def get_token_transactions(self, user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
-        """Получить историю транзакций пользователя."""
         return await db_manager.get_token_transactions(user_id, limit)
 
 

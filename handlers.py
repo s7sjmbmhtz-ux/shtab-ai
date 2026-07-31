@@ -293,8 +293,8 @@ async def menu_buy_tokens(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     tokens = await get_user_tokens_balance(user_id)
     
-    text = f"🪙 **Пакеты токенов**\n\n"
-    text += f"💰 Ваш баланс: **{tokens}** кредитов\n\n"
+    text = f"🪙 Пакеты токенов\n\n"
+    text += f"💰 Ваш баланс: {tokens} кредитов\n\n"
     text += "Разовое пополнение для любых задач:\n"
     text += "✅ Токены не сгорают\n"
     text += "✅ Подходят для всего: текст, изображения, видео\n"
@@ -318,7 +318,7 @@ async def menu_tariffs(message: types.Message, state: FSMContext):
 async def menu_support(message: types.Message, state: FSMContext):
     """Поддержка."""
     await message.answer(
-        "📞 **Поддержка**\n\n"
+        "📞 Поддержка\n\n"
         "Свяжитесь с нами:\n"
         "💬 Telegram: @ShtabProBot\n"
         "⏰ Время работы: 24/7\n\n"
@@ -332,7 +332,7 @@ async def back_to_main_from_anywhere(message: types.Message, state: FSMContext):
     """Возврат в главное меню."""
     await state.clear()
     await message.answer(
-        "👋 **Главное меню**",
+        "👋 Главное меню",
         reply_markup=get_main_menu(),
         parse_mode="HTML"
     )
@@ -1577,12 +1577,12 @@ async def enter_video(message: types.Message, state: FSMContext):
     await state.clear()
     await state.set_state(VideoStates.model_choice)
     
-    text = "🎬 **Выберите модель для генерации видео:**\n\n"
+    text = "🎬 Выберите модель для генерации видео:\n\n"
     
     for key, model in VIDEO_MODELS.items():
         text += (
-            f"• **{model['name']}**\n"
-            f"  _{model['description']}_\n"
+            f"• {model['name']}\n"
+            f"  {model['description']}\n"
             f"  💰 {model['price_per_second']} токенов/сек\n"
             f"  📐 {model['resolution']} | ⏱️ до {model['max_duration']} сек\n\n"
         )
@@ -1592,35 +1592,6 @@ async def enter_video(message: types.Message, state: FSMContext):
         reply_markup=get_video_models_keyboard(),
         parse_mode="HTML"
     )
-
-
-@router.message(StateFilter(VideoStates.menu), F.text == "🎬 Создать видео")
-async def start_video_creation(message: types.Message, state: FSMContext):
-    """Начало создания видео — выбор модели."""
-    await state.set_state(VideoStates.model_choice)
-    
-    text = "🎬 **Выберите модель для генерации видео:**\n\n"
-    
-    for key, model in VIDEO_MODELS.items():
-        text += (
-            f"• **{model['name']}**\n"
-            f"  _{model['description']}_\n"
-            f"  💰 {model['price_per_second']} токенов/сек\n"
-            f"  📐 {model['resolution']} | ⏱️ до {model['max_duration']} сек\n\n"
-        )
-    
-    await message.answer(
-        text,
-        reply_markup=get_video_models_keyboard(),
-        parse_mode="HTML"
-    )
-
-
-@router.message(StateFilter(VideoStates.menu), F.text == "⬅️ Назад")
-async def back_from_video_menu(message: types.Message, state: FSMContext):
-    """Возврат в главное меню из раздела видео."""
-    await state.clear()
-    await message.answer("👋 Главное меню", reply_markup=get_main_menu())
 
 
 @router.message(StateFilter(VideoStates.model_choice))
@@ -1651,9 +1622,9 @@ async def choose_video_model(message: types.Message, state: FSMContext):
     await state.set_state(VideoStates.waiting_prompt)
     
     await message.answer(
-        f"✅ Выбрана модель: **{selected_model['name']}**\n\n"
+        f"✅ Выбрана модель: {selected_model['name']}\n\n"
         "📝 Напишите промт (описание того, что хотите создать).\n\n"
-        "📸 *Опционально:* вы также можете загрузить фото как референс.\n"
+        "📸 Опционально: вы также можете загрузить фото как референс.\n"
         "Просто отправьте фото до или после промта.",
         reply_markup=get_skip_photo_keyboard(),
         parse_mode="HTML"
@@ -1697,7 +1668,7 @@ async def get_video_prompt(message: types.Message, state: FSMContext):
     max_duration = model.get("max_duration", 15)
     
     await message.answer(
-        f"⏱️ **Выберите длительность видео:**\n\n"
+        f"⏱️ Выберите длительность видео:\n\n"
         f"💡 Доступно: 5, 10, 15 секунд\n"
         f"📌 Максимум для этой модели: {max_duration} сек",
         reply_markup=get_video_duration_keyboard(max_duration)
@@ -1732,7 +1703,7 @@ async def get_video_duration(message: types.Message, state: FSMContext):
     
     if duration > max_duration:
         await message.answer(
-            f"❌ Для модели **{model.get('name', '...')}** максимальная длительность — {max_duration} сек.\n"
+            f"❌ Для модели {model.get('name', '...')} максимальная длительность — {max_duration} сек.\n"
             f"Пожалуйста, выберите меньшее значение.",
             reply_markup=get_video_duration_keyboard(max_duration)
         )
@@ -1764,11 +1735,11 @@ async def generate_video(message: types.Message, state: FSMContext):
         
         if tokens < required_tokens:
             await message.answer(
-                f"❌ **Недостаточно токенов.**\n\n"
+                f"❌ Недостаточно токенов.\n\n"
                 f"🎯 Модель: {model.get('name', '...')}\n"
                 f"⏱️ Длительность: {duration} сек\n"
-                f"💰 Нужно: **{required_tokens}** токенов\n"
-                f"💳 У вас: **{tokens}** токенов\n\n"
+                f"💰 Нужно: {required_tokens} токенов\n"
+                f"💳 У вас: {tokens} токенов\n\n"
                 f"Пополните баланс через «💳 Купить кредиты»",
                 parse_mode="HTML"
             )
@@ -1798,11 +1769,13 @@ async def generate_video(message: types.Message, state: FSMContext):
         # ============================================================
         # РЕАЛЬНЫЙ ЗАПРОС К GenAPI ЧЕРЕЗ ai_service
         # ============================================================
+        api_model = model.get("api_model", "ltx-video")
+        
         video_result = await ai_service.generate(
             provider_type="video",
             response_type=ResponseType.VIDEO,
             prompt=prompt,
-            model=model.get("api_model", "ltx-video"),
+            model=api_model,
             duration=duration,
             size="1280x720"
         )
@@ -1822,17 +1795,17 @@ async def generate_video(message: types.Message, state: FSMContext):
         # ФОРМИРУЕМ ПОДПИСЬ
         # ============================================================
         caption = (
-    f"🎬 Видео готово!\n\n"
-    f"🎯 Модель: {model.get('name', '...')}\n"
-    f"⏱️ Длительность: {duration} сек\n"
-    f"🤖 Промт: {prompt[:100]}{'...' if len(prompt) > 100 else ''}\n"
-)
-
-if is_admin(user_id):
-    caption += f"👑 Админ — токены не списаны"
-else:
-    caption += f"📊 Потрачено: {required_tokens} токенов\n"
-    caption += f"💳 Осталось: {tokens - required_tokens} токенов"
+            f"🎬 Видео готово!\n\n"
+            f"🎯 Модель: {model.get('name', '...')}\n"
+            f"⏱️ Длительность: {duration} сек\n"
+            f"🤖 Промт: {prompt[:100]}{'...' if len(prompt) > 100 else ''}\n"
+        )
+        
+        if is_admin(user_id):
+            caption += f"👑 Админ — токены не списаны"
+        else:
+            caption += f"📊 Потрачено: {required_tokens} токенов\n"
+            caption += f"💳 Осталось: {tokens - required_tokens} токенов"
         
         # ============================================================
         # ОТПРАВКА ВИДЕО
@@ -1857,6 +1830,16 @@ else:
     
     finally:
         await loading.delete()
+
+
+async def cancel_video_creation(message: types.Message, state: FSMContext):
+    """Отмена создания видео."""
+    await state.clear()
+    await state.set_state(VideoStates.menu)
+    await message.answer(
+        "❌ Отменено.",
+        reply_markup=get_video_menu_keyboard()
+    )
 
 
 # ==================== AI АССИСТЕНТ ====================
@@ -2091,9 +2074,9 @@ async def user_cabinet(message: types.Message, state: FSMContext):
 
     end_date = await get_subscription_end_date(message.from_user.id)
 
-    text = f"💰 **Мой баланс**\n\n"
-    text += f"🪙 Кредиты: **{tokens}**\n"
-    text += f"📋 Тариф: **{tariff.get('name', 'FREE')}**\n"
+    text = f"💰 Мой баланс\n\n"
+    text += f"🪙 Кредиты: {tokens}\n"
+    text += f"📋 Тариф: {tariff.get('name', 'FREE')}\n"
     text += f"💳 Стоимость: {tariff.get('price', 0)} ₽ / {tariff.get('period', 'месяц')}\n"
 
     if end_date:
@@ -2101,7 +2084,7 @@ async def user_cabinet(message: types.Message, state: FSMContext):
     else:
         text += f"📅 Бессрочный (FREE)\n"
 
-    text += f"\n📊 **Использование сегодня:**\n"
+    text += f"\n📊 Использование сегодня:\n"
     text += f"• Тексты: {text_used} / {text_limit} (осталось {text_remaining})\n"
     text += f"• Картинки: {image_used} / {image_limit} (осталось {image_remaining})\n"
     text += f"• Видео: {video_used} / {video_limit} (осталось {video_remaining})\n\n"
@@ -2120,8 +2103,8 @@ async def show_tariffs(message: types.Message, state: FSMContext):
 
     text = "🚀 ШТАБ AI — Тарифы и токены\n\n"
     text += "Выберите, что вам нужно:\n\n"
-    text += "📋 **Подписки** — для регулярного использования\n"
-    text += "🪙 **Пакеты токенов** — для разовых задач"
+    text += "📋 Подписки — для регулярного использования\n"
+    text += "🪙 Пакеты токенов — для разовых задач"
 
     await message.answer(
         text,
@@ -2133,11 +2116,11 @@ async def show_tariffs(message: types.Message, state: FSMContext):
 @router.callback_query(F.data == "show_subscriptions")
 async def show_subscriptions(callback: types.CallbackQuery):
     """Показать список тарифов (подписок)."""
-    text = "📋 **Подписки ШТАБ AI**\n\n"
+    text = "📋 Подписки ШТАБ AI\n\n"
     text += "Ежемесячная подписка для регулярного использования:\n\n"
 
     for tariff_id, tariff in get_all_tariffs().items():
-        text += f"{tariff['color']} **{tariff['name']}**\n"
+        text += f"{tariff['color']} {tariff['name']}\n"
         text += f"   💰 {tariff['price']} ₽ / {tariff['period']}\n"
         text += f"   📝 {tariff['text_limit']} текстов / день\n"
         text += f"   🖼 {tariff['image_limit']} изображений / день\n"
@@ -2154,12 +2137,12 @@ async def show_subscriptions(callback: types.CallbackQuery):
 
 @router.callback_query(F.data == "show_tokens")
 async def show_tokens_packages(callback: types.CallbackQuery):
-    """Показать пакеты токенов."""
+    """Показать пакеты токенов (из callback)."""
     user_id = callback.from_user.id
     tokens = await get_user_tokens_balance(user_id)
     
-    text = f"🪙 **Пакеты токенов**\n\n"
-    text += f"💰 Ваш баланс: **{tokens}** кредитов\n\n"
+    text = f"🪙 Пакеты токенов\n\n"
+    text += f"💰 Ваш баланс: {tokens} кредитов\n\n"
     text += "Разовое пополнение для любых задач:\n"
     text += "✅ Токены не сгорают\n"
     text += "✅ Подходят для всего: текст, изображения, видео\n"
@@ -2174,44 +2157,17 @@ async def show_tokens_packages(callback: types.CallbackQuery):
     await callback.answer()
 
 
-@router.message(F.text == "💳 Купить кредиты")
-async def show_tokens_packages(message: types.Message, state: FSMContext):
-    """Показать пакеты токенов."""
-    user_id = message.from_user.id
-    tokens = await get_user_tokens_balance(user_id)
-    
-    text = f"🪙 **Пакеты токенов**\n\n"
-    text += f"💰 Ваш баланс: **{tokens}** кредитов\n\n"
-    text += "Разовое пополнение для любых задач:\n"
-    text += "✅ Токены не сгорают\n"
-    text += "✅ Подходят для всего: текст, изображения, видео\n"
-    text += "✅ Можно использовать в любое время\n\n"
-    text += "Выберите пакет:"
-
-    await message.answer(
-        text,
-        reply_markup=get_tokens_packages_keyboard(),
-        parse_mode="HTML"
-    )
-
-
-@router.callback_query(F.data == "show_tokens")
-async def show_tokens_packages_callback(callback: types.CallbackQuery):
-    """Показать пакеты токенов (из callback)."""
-    user_id = callback.from_user.id
-    tokens = await get_user_tokens_balance(user_id)
-    
-    text = f"🪙 **Пакеты токенов**\n\n"
-    text += f"💰 Ваш баланс: **{tokens}** кредитов\n\n"
-    text += "Разовое пополнение для любых задач:\n"
-    text += "✅ Токены не сгорают\n"
-    text += "✅ Подходят для всего: текст, изображения, видео\n"
-    text += "✅ Можно использовать в любое время\n\n"
-    text += "Выберите пакет:"
+@router.callback_query(F.data == "back_to_tariffs")
+async def back_to_tariffs(callback: types.CallbackQuery):
+    """Вернуться к выбору тарифов/токенов."""
+    text = "🚀 ШТАБ AI — Тарифы и токены\n\n"
+    text += "Выберите, что вам нужно:\n\n"
+    text += "📋 Подписки — для регулярного использования\n"
+    text += "🪙 Пакеты токенов — для разовых задач"
 
     await callback.message.edit_text(
         text,
-        reply_markup=get_tokens_packages_keyboard(),
+        reply_markup=get_tariff_and_tokens_keyboard(),
         parse_mode="HTML"
     )
     await callback.answer()
@@ -2227,7 +2183,7 @@ async def tariff_selected(callback: types.CallbackQuery, state: FSMContext):
         current_tariff = await get_user_tariff(callback.from_user.id)
         if current_tariff.value == "free":
             await callback.message.edit_text(
-                "⚪ **FREE**\n\n"
+                "⚪ FREE\n\n"
                 "Бесплатный тариф уже активен!\n\n"
                 "📝 5 текстов / день\n"
                 "🖼 2 изображения / день\n"
@@ -2236,7 +2192,7 @@ async def tariff_selected(callback: types.CallbackQuery, state: FSMContext):
             )
         else:
             await callback.message.edit_text(
-                "⚪ **FREE**\n\n"
+                "⚪ FREE\n\n"
                 "Бесплатный тариф доступен всем новым пользователям.\n"
                 "Вы можете перейти на FREE в любой момент.\n\n"
                 "📝 5 текстов / день\n"
@@ -2248,7 +2204,7 @@ async def tariff_selected(callback: types.CallbackQuery, state: FSMContext):
         return
 
     await callback.message.edit_text(
-        f"💎 **{tariff['name']}** — {tariff['price']} ₽ / {tariff['period']}\n\n"
+        f"💎 {tariff['name']} — {tariff['price']} ₽ / {tariff['period']}\n\n"
         f"📝 {tariff['text_limit']} текстов / день\n"
         f"🖼 {tariff['image_limit']} изображений / день\n"
         f"🎬 {tariff['video_limit']} видео / день\n\n"
@@ -2277,16 +2233,16 @@ async def buy_tokens_package(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     current_tokens = await get_user_tokens_balance(user_id)
     
-    text = f"🪙 **Пакет {amount} токенов**\n\n"
-    text += f"💰 Стоимость: **{price} ₽**\n"
-    text += f"📊 Цена за токен: **{price/amount:.2f} ₽**\n"
-    text += f"💳 Ваш баланс: **{current_tokens}** токенов\n\n"
-    text += "📌 **Как оплатить:**\n"
+    text = f"🪙 Пакет {amount} токенов\n\n"
+    text += f"💰 Стоимость: {price} ₽\n"
+    text += f"📊 Цена за токен: {price/amount:.2f} ₽\n"
+    text += f"💳 Ваш баланс: {current_tokens} токенов\n\n"
+    text += "📌 Как оплатить:\n"
     text += "1️⃣ Переведите сумму по реквизитам\n"
     text += "2️⃣ Отправьте скриншот чека\n"
     text += "3️⃣ Токены зачислятся автоматически\n\n"
-    text += "💳 **Реквизиты для оплаты:**\n"
-    text += "<code>+7 999 123-45-67</code> (СБП)\n\n"
+    text += "💳 Реквизиты для оплаты:\n"
+    text += "+7 999 123-45-67 (СБП)\n\n"
     text += "После оплаты нажмите «✅ Я оплатил»"
 
     await callback.message.edit_text(
@@ -2313,11 +2269,11 @@ async def confirm_tokens_payment(callback: types.CallbackQuery):
     admin_id = settings.ADMIN_TELEGRAM_ID
     
     admin_text = (
-        f"💰 **Заявка на пополнение токенов**\n\n"
+        f"💰 Заявка на пополнение токенов\n\n"
         f"👤 Пользователь: {first_name} (@{username})\n"
         f"🆔 ID: <code>{user_id}</code>\n"
-        f"📊 Пакет: **{amount}** токенов\n"
-        f"💳 Текущий баланс: **{user.tokens if user else 0}** токенов\n\n"
+        f"📊 Пакет: {amount} токенов\n"
+        f"💳 Текущий баланс: {user.tokens if user else 0} токенов\n\n"
         f"⏳ Ожидает подтверждения"
     )
     
@@ -2334,7 +2290,7 @@ async def confirm_tokens_payment(callback: types.CallbackQuery):
     )
     
     await callback.message.edit_text(
-        f"✅ Заявка на **{amount}** токенов отправлена!\n\n"
+        f"✅ Заявка на {amount} токенов отправлена!\n\n"
         f"Ожидайте подтверждения администратора.\n"
         f"Обычно это занимает до 5 минут.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
@@ -2366,8 +2322,8 @@ async def admin_approve_tokens(callback: types.CallbackQuery):
         try:
             await callback.bot.send_message(
                 user_id,
-                f"✅ **Пополнение подтверждено!**\n\n"
-                f"💰 На ваш баланс зачислено **{amount}** токенов.\n\n"
+                f"✅ Пополнение подтверждено!\n\n"
+                f"💰 На ваш баланс зачислено {amount} токенов.\n\n"
                 f"Продолжайте пользоваться сервисом! 🚀",
                 parse_mode="HTML"
             )
@@ -2399,7 +2355,7 @@ async def admin_reject_tokens(callback: types.CallbackQuery):
     try:
         await callback.bot.send_message(
             user_id,
-            f"❌ **Пополнение отклонено**\n\n"
+            f"❌ Пополнение отклонено\n\n"
             f"К сожалению, ваша заявка на пополнение была отклонена.\n"
             f"Пожалуйста, проверьте правильность оплаты и попробуйте снова.",
             parse_mode="HTML"

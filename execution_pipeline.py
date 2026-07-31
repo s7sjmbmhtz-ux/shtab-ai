@@ -50,6 +50,21 @@ class ExecutionPipeline:
         return await self._generate_and_save(tool, user_id, prompt, input_data)
 
     async def _validate(self, data: Dict[str, Any], tool: ToolDefinition) -> ValidationResult:
+        # Пропускаем валидацию для новых маркетинговых инструментов
+        # если они используют тот же tool_id, но с другими полями
+        skip_validation_for = ["content_plan", "offer", "email", "utp", "audience_analysis"]
+        
+        if tool.id in skip_validation_for:
+            return ValidationResult(ok=True)
+        
+        # Для MARKETING_POST проверяем, что переданы все нужные поля
+        if tool.id == "marketing_post":
+            required_fields = ["product", "audience", "platform", "style"]
+            for field in required_fields:
+                if not data.get(field):
+                    return ValidationResult(ok=False, message=f"Заполните: {', '.join(required_fields)}")
+            return ValidationResult(ok=True)
+        
         for step in tool.workflow.steps:
             value = data.get(step.field, "")
             if step.required and not value:

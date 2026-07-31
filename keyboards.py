@@ -6,24 +6,39 @@ from models import TextOperation
 # ==================== ГЛАВНОЕ МЕНЮ ====================
 
 def get_main_menu() -> ReplyKeyboardMarkup:
+    """Главное меню с кнопками-действиями."""
     buttons = [
+        [
+            KeyboardButton(text="🎬 Создать видео"),
+            KeyboardButton(text="🖼 Создать картинку")
+        ],
         [
             KeyboardButton(text="🏢 Продажи"),
             KeyboardButton(text="📈 Маркетинг")
-        ],
-        [
-            KeyboardButton(text="🖼 Изображения"),
-            KeyboardButton(text="🎬 Видео")
         ],
         [
             KeyboardButton(text="🤖 AI Ассистент"),
             KeyboardButton(text="🛒 Маркетплейсы")
         ],
         [
-            KeyboardButton(text="👤 Кабинет"),
-            KeyboardButton(text="💎 Тарифы")
+            KeyboardButton(text="💰 Мой баланс"),
+            KeyboardButton(text="💳 Купить кредиты")
+        ],
+        [
+            KeyboardButton(text="💎 Тарифы"),
+            KeyboardButton(text="📞 Поддержка")
         ]
     ]
+    return ReplyKeyboardMarkup(
+        keyboard=buttons,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+
+def get_back_to_menu_keyboard() -> ReplyKeyboardMarkup:
+    """Клавиатура с кнопкой назад."""
+    buttons = [[KeyboardButton(text="🔙 Назад")]]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
         resize_keyboard=True,
@@ -45,7 +60,7 @@ def get_sales_menu_keyboard() -> ReplyKeyboardMarkup:
         ],
         [
             KeyboardButton(text="📊 Анализ переписки"),
-            KeyboardButton(text="⬅️ Назад")
+            KeyboardButton(text="🔙 Назад")
         ]
     ]
     return ReplyKeyboardMarkup(
@@ -65,7 +80,7 @@ def get_communication_format_keyboard() -> ReplyKeyboardMarkup:
             KeyboardButton(text="💬 Переписка"),
             KeyboardButton(text="🤝 Личная встреча")
         ],
-        [KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -116,7 +131,7 @@ def get_marketing_menu_keyboard() -> ReplyKeyboardMarkup:
             KeyboardButton(text="🔍 Анализ ЦА")
         ],
         [
-            KeyboardButton(text="⬅️ Назад")
+            KeyboardButton(text="🔙 Назад")
         ]
     ]
     return ReplyKeyboardMarkup(
@@ -131,7 +146,7 @@ def get_platform_keyboard() -> ReplyKeyboardMarkup:
         [KeyboardButton(text="📱 Instagram"), KeyboardButton(text="✈️ Telegram")],
         [KeyboardButton(text="📘 VK"), KeyboardButton(text="💼 LinkedIn")],
         [KeyboardButton(text="🌐 Другое")],
-        [KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -144,7 +159,7 @@ def get_style_keyboard() -> ReplyKeyboardMarkup:
     buttons = [
         [KeyboardButton(text="🎓 Экспертный"), KeyboardButton(text="🤝 Дружелюбный")],
         [KeyboardButton(text="🔥 Провокационный"), KeyboardButton(text="💎 Премиум")],
-        [KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -189,7 +204,7 @@ SIZE_MAP = {
 def get_images_menu_keyboard() -> ReplyKeyboardMarkup:
     buttons = [
         [KeyboardButton(text="🖼 Создать изображение")],
-        [KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -202,7 +217,7 @@ def get_purpose_keyboard() -> ReplyKeyboardMarkup:
     buttons = [
         [KeyboardButton(text="📢 Реклама"), KeyboardButton(text="📱 Соцсети")],
         [KeyboardButton(text="🌐 Сайт"), KeyboardButton(text="🛒 Маркетплейс")],
-        [KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -215,7 +230,7 @@ def get_image_style_keyboard() -> ReplyKeyboardMarkup:
     buttons = [
         [KeyboardButton(text="🎨 Реалистичный"), KeyboardButton(text="✨ Минимализм")],
         [KeyboardButton(text="🎭 3D"), KeyboardButton(text="🖌 Иллюстрация")],
-        [KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -228,7 +243,7 @@ def get_image_size_keyboard() -> ReplyKeyboardMarkup:
     buttons = [
         [KeyboardButton(text="⬜ Квадрат"), KeyboardButton(text="⬆️ Вертикальный")],
         [KeyboardButton(text="↔️ Горизонтальный")],
-        [KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -252,7 +267,7 @@ def get_video_menu_keyboard() -> ReplyKeyboardMarkup:
     """Меню раздела «Видео»."""
     buttons = [
         [KeyboardButton(text="🎬 Создать видео")],
-        [KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -264,15 +279,15 @@ def get_video_menu_keyboard() -> ReplyKeyboardMarkup:
 def get_video_models_keyboard() -> ReplyKeyboardMarkup:
     """Клавиатура выбора модели для видео."""
     buttons = [
-        [KeyboardButton(text="⚡ LTX Video — 10 токенов/сек")],
-        [KeyboardButton(text="🎬 CogVideoX — 35 токенов/сек")],
-        [KeyboardButton(text="🎥 Kling Standard — 30 токенов/сек")],
-        [KeyboardButton(text="🌟 Kling Pro — 56 токенов/сек")],
-        [KeyboardButton(text="🌟 Veo 3.1 Lite — 35 токенов/сек")],
-        [KeyboardButton(text="💎 Veo 3.1 — 200 токенов/сек")],
-        [KeyboardButton(text="🌈 Luma Ray2 — 40 токенов/сек")],
-        [KeyboardButton(text="🎞️ Runway Gen-4 — 60 токенов/сек")],
-        [KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="⚡ LTX Video — 5 токенов/сек")],
+        [KeyboardButton(text="🎬 CogVideoX — 12 токенов/сек")],
+        [KeyboardButton(text="🎥 Kling Standard — 15 токенов/сек")],
+        [KeyboardButton(text="🌈 Luma Ray2 — 20 токенов/сек")],
+        [KeyboardButton(text="🌟 Kling Pro — 18 токенов/сек")],
+        [KeyboardButton(text="🌟 Veo 3.1 Lite — 12 токенов/сек")],
+        [KeyboardButton(text="💎 Veo 3.1 — 50 токенов/сек")],
+        [KeyboardButton(text="🎞️ Runway Gen-4 — 25 токенов/сек")],
+        [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -281,29 +296,17 @@ def get_video_models_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
-def get_video_duration_keyboard(max_duration: int = 30) -> ReplyKeyboardMarkup:
-    """Клавиатура выбора длительности видео."""
-    durations = []
-    
-    if max_duration >= 5:
-        durations.append(KeyboardButton(text="5 секунд"))
-    if max_duration >= 8:
-        durations.append(KeyboardButton(text="8 секунд"))
-    if max_duration >= 10:
-        durations.append(KeyboardButton(text="10 секунд"))
-    if max_duration >= 15:
-        durations.append(KeyboardButton(text="15 секунд"))
-    if max_duration >= 20:
-        durations.append(KeyboardButton(text="20 секунд"))
-    if max_duration >= 30:
-        durations.append(KeyboardButton(text="30 секунд"))
-    
+def get_video_duration_keyboard(max_duration: int = 15) -> ReplyKeyboardMarkup:
+    """Клавиатура выбора длительности видео (5, 10, 15 сек)."""
     buttons = []
-    for i in range(0, len(durations), 2):
-        row = durations[i:i+2]
-        buttons.append(row)
     
-    buttons.append([KeyboardButton(text="⬅️ Назад")])
+    buttons.append([KeyboardButton(text="5 секунд")])
+    buttons.append([KeyboardButton(text="10 секунд")])
+    
+    if max_duration >= 15:
+        buttons.append([KeyboardButton(text="15 секунд")])
+    
+    buttons.append([KeyboardButton(text="🔙 Назад")])
     
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -316,7 +319,7 @@ def get_skip_photo_keyboard() -> ReplyKeyboardMarkup:
     """Клавиатура пропуска фото."""
     buttons = [
         [KeyboardButton(text="⏭ Пропустить фото")],
-        [KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -369,7 +372,7 @@ def get_editor_operations_keyboard() -> ReplyKeyboardMarkup:
         ],
         [
             KeyboardButton(text="🌍 Перевести"),
-            KeyboardButton(text="⬅️ Назад")
+            KeyboardButton(text="🔙 Назад")
         ]
     ]
     return ReplyKeyboardMarkup(
@@ -405,7 +408,7 @@ def get_editor_language_keyboard() -> ReplyKeyboardMarkup:
             KeyboardButton(text="🇨🇳 Китайский")
         ],
         [
-            KeyboardButton(text="⬅️ Назад")
+            KeyboardButton(text="🔙 Назад")
         ]
     ]
     return ReplyKeyboardMarkup(
@@ -415,16 +418,73 @@ def get_editor_language_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
-# ==================== ТАРИФЫ ====================
+# ==================== ТАРИФЫ И ТОКЕНЫ ====================
 
 def get_tariffs_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура выбора тарифа."""
     builder = InlineKeyboardBuilder()
     builder.button(text="⚪ FREE — 0 ₽", callback_data="tariff_free")
-    builder.button(text="🟢 LITE — 499 ₽", callback_data="tariff_lite")
-    builder.button(text="🔵 PRO — 1490 ₽", callback_data="tariff_pro")
-    builder.button(text="🟣 BUSINESS — 3990 ₽", callback_data="tariff_business")
+    builder.button(text="🟢 LITE — 299 ₽", callback_data="tariff_lite")
+    builder.button(text="🔵 PRO — 799 ₽", callback_data="tariff_pro")
+    builder.button(text="🟣 BUSINESS — 1999 ₽", callback_data="tariff_business")
     builder.adjust(2, 2)
+    return builder.as_markup()
+
+
+def get_tariff_and_tokens_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура выбора между тарифами и токенами."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="📋 Подписки", callback_data="show_subscriptions")
+    builder.button(text="🪙 Пакеты токенов", callback_data="show_tokens")
+    builder.button(text="🔙 Назад", callback_data="back_to_main")
+    builder.adjust(2, 1)
+    return builder.as_markup()
+
+
+def get_back_to_tariffs_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура возврата к выбору тарифов/токенов."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🔙 Назад к выбору", callback_data="back_to_tariffs")
+    return builder.as_markup()
+
+
+def get_back_to_subscriptions_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура возврата к подпискам."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🔙 К подпискам", callback_data="show_subscriptions")
+    return builder.as_markup()
+
+
+def get_tokens_packages_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура с пакетами токенов."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🪙 50 токенов — 69 ₽", callback_data="buy_tokens_50")
+    builder.button(text="🪙 150 токенов — 179 ₽", callback_data="buy_tokens_150")
+    builder.button(text="🪙 500 токенов — 499 ₽", callback_data="buy_tokens_500")
+    builder.button(text="🪙 1500 токенов — 1299 ₽", callback_data="buy_tokens_1500")
+    builder.button(text="🪙 5000 токенов — 3999 ₽", callback_data="buy_tokens_5000")
+    builder.button(text="🔙 Назад", callback_data="back_to_tariffs")
+    builder.adjust(2, 2, 1)
+    return builder.as_markup()
+
+
+def get_tokens_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура покупки токенов (упрощённая)."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🪙 50 токенов — 69 ₽", callback_data="buy_tokens_50")
+    builder.button(text="🪙 150 токенов — 179 ₽", callback_data="buy_tokens_150")
+    builder.button(text="🪙 500 токенов — 499 ₽", callback_data="buy_tokens_500")
+    builder.button(text="🪙 1500 токенов — 1299 ₽", callback_data="buy_tokens_1500")
+    builder.button(text="🪙 5000 токенов — 3999 ₽", callback_data="buy_tokens_5000")
+    builder.button(text="🔙 Назад", callback_data="back_to_main")
+    builder.adjust(2, 2, 1)
+    return builder.as_markup()
+
+
+def get_promo_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура для ввода промокода."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🔙 Назад", callback_data="back_to_tariffs")
     return builder.as_markup()
 
 
@@ -438,7 +498,7 @@ def get_marketplace_platform_keyboard() -> ReplyKeyboardMarkup:
         [KeyboardButton(text="📦 Яндекс.Маркет")],
         [KeyboardButton(text="🛍️ AliExpress")],
         [KeyboardButton(text="🌐 Другое")],
-        [KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -455,7 +515,7 @@ def get_marketplace_task_keyboard() -> ReplyKeyboardMarkup:
         [KeyboardButton(text="🎯 Анализ конкурентов")],
         [KeyboardButton(text="💎 Улучшение названия")],
         [KeyboardButton(text="💬 Ответ клиенту")],
-        [KeyboardButton(text="⬅️ Назад")]
+        [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=buttons,
@@ -464,34 +524,14 @@ def get_marketplace_task_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
-# ==================== ТОКЕНЫ ====================
+# ==================== РЕФЕРАЛЬНАЯ СИСТЕМА ====================
 
-def get_tokens_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура покупки токенов."""
+def get_referral_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура для реферальной системы."""
     builder = InlineKeyboardBuilder()
-    builder.button(text="🪙 100 токенов — 49 ₽", callback_data="buy_tokens_100")
-    builder.button(text="🪙 500 токенов — 199 ₽", callback_data="buy_tokens_500")
-    builder.button(text="🪙 1000 токенов — 349 ₽", callback_data="buy_tokens_1000")
-    builder.button(text="🪙 5000 токенов — 1499 ₽", callback_data="buy_tokens_5000")
-    builder.button(text="🎁 Ввести промокод", callback_data="enter_promo")
+    builder.button(text="📤 Поделиться ссылкой", callback_data="share_referral")
+    builder.button(text="📊 Мои рефералы", callback_data="my_referrals")
+    builder.button(text="💰 Вывести", callback_data="withdraw_referral")
     builder.button(text="🔙 Назад", callback_data="back_to_main")
-    builder.adjust(2, 2, 1, 1)
+    builder.adjust(2, 1, 1)
     return builder.as_markup()
-
-
-def get_promo_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура для ввода промокода."""
-    builder = InlineKeyboardBuilder()
-    builder.button(text="🔙 Назад", callback_data="back_to_tokens")
-    return builder.as_markup()
-
-
-# ==================== ОБЩИЕ ====================
-
-def get_back_to_menu_keyboard() -> ReplyKeyboardMarkup:
-    buttons = [[KeyboardButton(text="⬅️ Назад")]]
-    return ReplyKeyboardMarkup(
-        keyboard=buttons,
-        resize_keyboard=True,
-        one_time_keyboard=False
-    )

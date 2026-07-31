@@ -65,7 +65,6 @@ class Feature(str, Enum):
 # ============================================================
 
 class BasePromptBuilder:
-    """Базовый класс для построителей промптов"""
     NAME: Optional[str] = None
 
     def build(self, context) -> str:
@@ -132,7 +131,6 @@ class VideoModel(str, Enum):
 
 
 class VideoGenerationData(BaseModel):
-    """Данные для генерации видео."""
     prompt: str
     model: VideoModel
     duration: int = 5
@@ -142,7 +140,6 @@ class VideoGenerationData(BaseModel):
 
 
 class VideoInfo(BaseModel):
-    """Информация о сгенерированном видео."""
     url: str
     duration: int
     resolution: str
@@ -165,7 +162,6 @@ class Tariff(str, Enum):
 # ============================================================
 
 class TokenPackage(BaseModel):
-    """Пакет токенов для покупки."""
     id: str
     name: str
     tokens: int
@@ -264,7 +260,6 @@ class ImageResponse(BaseModel):
 # ============================================================
 
 class AudioFile(BaseModel):
-    """Модель аудиофайла для обработки"""
     filename: str
     extension: str
     duration: int

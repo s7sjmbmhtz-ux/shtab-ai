@@ -4,7 +4,7 @@ import json
 import base64
 from typing import Optional, Dict, Any
 from abc import ABC, abstractmethod
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from settings import settings
 from models import (
@@ -14,19 +14,11 @@ from models import (
 from utils import logger
 
 
-# ============================================================
-# AI PROVIDER (ABSTRACT)
-# ============================================================
-
 class AIProvider(ABC):
     @abstractmethod
     async def generate(self, prompt: str, **kwargs) -> AIResponse:
         pass
 
-
-# ============================================================
-# TEXT PROVIDER (GenAPI)
-# ============================================================
 
 class TextProvider(AIProvider):
     def __init__(self, client: httpx.AsyncClient):
@@ -34,11 +26,6 @@ class TextProvider(AIProvider):
         self.api_key = settings.GENAPI_API_KEY
         self.base_url = settings.GENAPI_BASE_URL
 
-    @retry(
-        stop=stop_after_attempt(2),
-        wait=wait_exponential(multiplier=1, min=1, max=10),
-        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
-    )
     async def _make_request(self, prompt: str, model: str, temperature: float) -> str:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -53,6 +40,8 @@ class TextProvider(AIProvider):
 
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
 
+        logger.info(f"📤 TEXT API запрос: {self.base_url}/api/v1/networks/{model}")
+
         response = await self.client.post(
             f"{self.base_url}/api/v1/networks/{model}",
             headers=headers,
@@ -62,7 +51,6 @@ class TextProvider(AIProvider):
         response.raise_for_status()
         data = response.json()
         
-        # Обработка ответа для текстовых моделей
         if "choices" in data and len(data["choices"]) > 0:
             return data["choices"][0].get("message", {}).get("content", "")
         return data.get("result", data.get("response", str(data)))
@@ -94,7 +82,7 @@ class TextProvider(AIProvider):
                 response_type=ResponseType.TEXT
             )
         except Exception as e:
-            logger.error(f"Ошибка генерации текста: {e}")
+            logger.error(f"❌ Ошибка генерации текста: {e}")
             return AIResponse(
                 content="",
                 provider="genapi",
@@ -105,21 +93,12 @@ class TextProvider(AIProvider):
             )
 
 
-# ============================================================
-# IMAGE PROVIDER (GenAPI)
-# ============================================================
-
 class ImageProvider(AIProvider):
     def __init__(self, client: httpx.AsyncClient):
         self.client = client
         self.api_key = settings.GENAPI_API_KEY
         self.base_url = settings.GENAPI_BASE_URL
 
-    @retry(
-        stop=stop_after_attempt(2),
-        wait=wait_exponential(multiplier=1, min=2, max=8),
-        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
-    )
     async def _make_request(self, prompt: str, size: str, model: str) -> Dict[str, Any]:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -132,6 +111,8 @@ class ImageProvider(AIProvider):
         }
 
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
+
+        logger.info(f"📤 IMAGE API запрос: {self.base_url}/api/v1/networks/{model}")
 
         response = await self.client.post(
             f"{self.base_url}/api/v1/networks/{model}",
@@ -186,7 +167,7 @@ class ImageProvider(AIProvider):
             )
 
         except Exception as e:
-            logger.error(f"Ошибка генерации изображения: {e}")
+            logger.error(f"❌ Ошибка генерации изображения: {e}")
             return AIResponse(
                 content="",
                 provider="genapi",
@@ -196,10 +177,6 @@ class ImageProvider(AIProvider):
                 metadata={"error": str(e)}
             )
 
-
-# ============================================================
-# VIDEO PROVIDER (GenAPI)
-# ============================================================
 
 class VideoProvider(AIProvider):
     def __init__(self, client: httpx.AsyncClient):
@@ -214,18 +191,12 @@ class VideoProvider(AIProvider):
             "Accept": "application/json"
         }
         
-        # ============================================================
-        # БАЗОВЫЙ PAYLOAD ДЛЯ ВСЕХ МОДЕЛЕЙ
-        # ============================================================
         payload = {
             "callback_url": None,
             "prompt": prompt,
             "duration": kwargs.get("duration", 5)
         }
         
-        # ============================================================
-        # LTX 2.3
-        # ============================================================
         if model == "ltx-2-3":
             payload.update({
                 "mode": kwargs.get("mode", "pro"),
@@ -235,9 +206,6 @@ class VideoProvider(AIProvider):
                 "generate_audio": True
             })
         
-        # ============================================================
-        # CogVideoX 5B
-        # ============================================================
         if model == "cog-video-x-5b":
             payload.update({
                 "width": kwargs.get("width", 720),
@@ -250,9 +218,6 @@ class VideoProvider(AIProvider):
                 "export_fps": kwargs.get("export_fps", 30)
             })
         
-        # ============================================================
-        # Kling Video O3
-        # ============================================================
         if model == "kling-video-o3":
             payload.update({
                 "model": kwargs.get("model_type", "text-to-video"),
@@ -277,9 +242,6 @@ class VideoProvider(AIProvider):
             if kwargs.get("video_url"):
                 payload["video_url"] = kwargs.get("video_url")
         
-        # ============================================================
-        # Kling Video V3
-        # ============================================================
         if model == "kling-video-v3":
             payload.update({
                 "model": kwargs.get("model_type", "pro"),
@@ -300,9 +262,6 @@ class VideoProvider(AIProvider):
             if kwargs.get("end_image_url"):
                 payload["end_image_url"] = kwargs.get("end_image_url")
         
-        # ============================================================
-        # Veo 3.1
-        # ============================================================
         if model == "veo-3.1":
             payload.update({
                 "mode": kwargs.get("mode", "txt2video"),
@@ -320,13 +279,7 @@ class VideoProvider(AIProvider):
                 payload["seed"] = kwargs.get("seed")
             if kwargs.get("image_urls"):
                 payload["image_urls"] = kwargs.get("image_urls")
-            if kwargs.get("mode") == "first-last-frame-to-video":
-                if kwargs.get("end_image_url"):
-                    payload["end_image_url"] = kwargs.get("end_image_url")
         
-        # ============================================================
-        # Veo 3.1 Lite
-        # ============================================================
         if model == "veo-3-1-lite":
             payload.update({
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
@@ -344,9 +297,6 @@ class VideoProvider(AIProvider):
             if kwargs.get("last_frame_url"):
                 payload["last_frame_url"] = kwargs.get("last_frame_url")
         
-        # ============================================================
-        # Luma Ray2
-        # ============================================================
         if model == "luma":
             payload["user_prompt"] = prompt
             del payload["prompt"]
@@ -363,9 +313,6 @@ class VideoProvider(AIProvider):
             if kwargs.get("image_end_url"):
                 payload["image_end_url"] = kwargs.get("image_end_url")
         
-        # ============================================================
-        # Runway Gen-4
-        # ============================================================
         if model == "runway-gen4":
             payload["promptText"] = prompt
             del payload["prompt"]
@@ -377,7 +324,6 @@ class VideoProvider(AIProvider):
             if kwargs.get("firstFrame"):
                 payload["firstFrame"] = kwargs.get("firstFrame")
             else:
-                logger.error("❌ Для Runway Gen-4 обязательно нужно изображение (firstFrame)")
                 raise ValueError("Runway Gen-4 requires firstFrame (image)")
 
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
@@ -461,7 +407,6 @@ class VideoProvider(AIProvider):
                     video_url = result["videos"][0].get("url")
 
             if not video_url:
-                logger.error(f"❌ Не удалось найти URL видео в ответе: {result}")
                 return AIResponse(
                     content="",
                     provider="genapi_video",
@@ -490,17 +435,6 @@ class VideoProvider(AIProvider):
                 metadata=response_data
             )
 
-        except httpx.HTTPStatusError as e:
-            logger.error(f"❌ HTTP ошибка Video API: {e.response.status_code}")
-            logger.error(f"❌ Response: {e.response.text[:500]}")
-            return AIResponse(
-                content="",
-                provider="genapi_video",
-                model=model,
-                status=GenerationStatus.ERROR,
-                response_type=ResponseType.VIDEO,
-                metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
-            )
         except Exception as e:
             logger.error(f"❌ Ошибка генерации видео: {e}")
             return AIResponse(
@@ -512,10 +446,6 @@ class VideoProvider(AIProvider):
                 metadata={"error": str(e)}
             )
 
-
-# ============================================================
-# AUDIO PROVIDER (заглушка)
-# ============================================================
 
 class AudioProvider(AIProvider):
     def __init__(self, client: httpx.AsyncClient):
@@ -531,10 +461,6 @@ class AudioProvider(AIProvider):
             metadata={"error": "Audio генерация пока не реализована"}
         )
 
-
-# ============================================================
-# AISERVICE (ФАСАД)
-# ============================================================
 
 class AIService:
     def __init__(self):

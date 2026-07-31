@@ -964,4 +964,24 @@ async def back_to_main(message: types.Message, state: FSMContext):
 
     if current in sales_states:
         await state.clear()
-        await state.set_state(SalesStates.m
+        await state.set_state(SalesStates.menu)
+        await message.answer("📊 **Продажи**", reply_markup=get_sales_menu_keyboard(), parse_mode="HTML")
+    elif current in marketing_states:
+        await state.clear()
+        await state.set_state(MarketingStates.menu)
+        await message.answer("📊 **Маркетинг**", reply_markup=get_marketing_menu_keyboard(), parse_mode="HTML")
+    elif current in image_states:
+        await state.clear()
+        await state.set_state(ImageStates.menu)
+        await message.answer("🖼 **Изображения**", reply_markup=get_images_menu_keyboard(), parse_mode="HTML")
+    elif current in marketplace_states:
+        await state.clear()
+        await state.set_state(MarketplaceStates.menu)
+        await message.answer("🛒 **Маркетплейсы**", reply_markup=get_back_to_menu_keyboard(), parse_mode="HTML")
+    elif current in assistant_states:
+        await state.clear()
+        await state.set_state(AssistantStates.menu)
+        await message.answer("🤖 **AI Ассистент**", reply_markup=get_back_to_menu_keyboard(), parse_mode="HTML")
+    else:
+        await state.clear()
+        await message.answer("👋 Главное меню", reply_markup=get_main_menu())

@@ -292,7 +292,7 @@ async def menu_buy_tokens(message: types.Message, state: FSMContext):
     """Купить кредиты."""
     user_id = message.from_user.id
     tokens = await get_user_tokens_balance(user_id)
-    
+
     text = f"🪙 Пакеты токенов\n\n"
     text += f"💰 Ваш баланс: {tokens} кредитов\n\n"
     text += "Разовое пополнение для любых задач:\n"
@@ -717,11 +717,11 @@ async def analysis_text(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Назад":
         await cancel_analysis(message, state)
         return
-    
+
     if len(message.text) < 10:
         await message.answer("❌ Текст слишком короткий. Отправьте диалог (минимум 10 символов).")
         return
-    
+
     await state.update_data(text=message.text)
     await generate_analysis(message, state)
 
@@ -756,7 +756,7 @@ async def generate_analysis(message: types.Message, state: FSMContext):
 
         from ai_service import ai_service
         from models import ResponseType, GenerationStatus
-        
+
         ai_result = await ai_service.generate(
             provider_type="text",
             response_type=ResponseType.TEXT,
@@ -775,7 +775,7 @@ async def generate_analysis(message: types.Message, state: FSMContext):
             return
 
         content = ai_result.content
-        
+
         content = re.sub(r'\*\*(.+?)\*\*', r'\1', content)
         content = re.sub(r'\*(.+?)\*', r'\1', content)
         content = re.sub(r'^#+\s*(.+?)$', r'\1', content, flags=re.MULTILINE)
@@ -1576,9 +1576,9 @@ async def enter_video(message: types.Message, state: FSMContext):
     """Вход в раздел «Видео» — сразу показывает модели."""
     await state.clear()
     await state.set_state(VideoStates.model_choice)
-    
+
     text = "🎬 Выберите модель для генерации видео:\n\n"
-    
+
     for key, model in VIDEO_MODELS.items():
         text += (
             f"• {model['name']}\n"
@@ -1586,7 +1586,7 @@ async def enter_video(message: types.Message, state: FSMContext):
             f"  💰 {model['price_per_second']} токенов/сек\n"
             f"  📐 {model['resolution']} | ⏱️ до {model['max_duration']} сек\n\n"
         )
-    
+
     await message.answer(
         text,
         reply_markup=get_video_models_keyboard(),
@@ -1604,23 +1604,23 @@ async def choose_video_model(message: types.Message, state: FSMContext):
             reply_markup=get_video_menu_keyboard()
         )
         return
-    
+
     selected_model = None
     for key, model in VIDEO_MODELS.items():
         if model["name"] in message.text:
             selected_model = {**model, "key": key}
             break
-    
+
     if not selected_model:
         await message.answer(
             "❌ Пожалуйста, выберите модель из кнопок выше.",
             reply_markup=get_video_models_keyboard()
         )
         return
-    
+
     await state.update_data(model=selected_model)
     await state.set_state(VideoStates.waiting_prompt)
-    
+
     await message.answer(
         f"✅ Выбрана модель: {selected_model['name']}\n\n"
         "📝 Напишите промт (описание того, что хотите создать).\n\n"
@@ -1650,23 +1650,23 @@ async def get_video_prompt(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Назад":
         await cancel_video_creation(message, state)
         return
-    
+
     if message.text == "⏭ Пропустить фото":
         await state.update_data(photo_file_id=None)
         await message.answer("⏭ Фото пропущено. Продолжаем с текстовым промптом.")
         return
-    
+
     if len(message.text) < 3:
         await message.answer("❌ Промт слишком короткий. Напишите хотя бы 3 символа.")
         return
-    
+
     await state.update_data(prompt=message.text)
     await state.set_state(VideoStates.waiting_duration)
-    
+
     data = await state.get_data()
     model = data.get("model", {})
     max_duration = model.get("max_duration", 15)
-    
+
     await message.answer(
         f"⏱️ Выберите длительность видео:\n\n"
         f"💡 Доступно: 5, 10, 15 секунд\n"
@@ -1681,26 +1681,26 @@ async def get_video_duration(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Назад":
         await cancel_video_creation(message, state)
         return
-    
+
     duration_map = {
         "5 секунд": 5,
         "10 секунд": 10,
         "15 секунд": 15,
     }
-    
+
     if message.text not in duration_map:
         await message.answer(
             "❌ Выберите длительность из кнопок: 5, 10 или 15 секунд.",
             reply_markup=get_video_duration_keyboard()
         )
         return
-    
+
     duration = duration_map[message.text]
-    
+
     data = await state.get_data()
     model = data.get("model", {})
     max_duration = model.get("max_duration", 15)
-    
+
     if duration > max_duration:
         await message.answer(
             f"❌ Для модели {model.get('name', '...')} максимальная длительность — {max_duration} сек.\n"
@@ -1708,32 +1708,30 @@ async def get_video_duration(message: types.Message, state: FSMContext):
             reply_markup=get_video_duration_keyboard(max_duration)
         )
         return
-    
+
     await state.update_data(duration=duration)
     await generate_video(message, state)
 
 
 async def generate_video(message: types.Message, state: FSMContext):
-async def generate_video(message: types.Message, state: FSMContext):
     """Генерация видео через GenAPI."""
     data = await state.get_data()
     user_id = message.from_user.id
-    
+
     model = data.get("model", {})
     prompt = data.get("prompt", "")
     duration = data.get("duration", 5)
     photo_file_id = data.get("photo_file_id")
-    
+
     price_per_second = model.get("price_per_second", 5)
     required_tokens = duration * price_per_second
-    
-    # ==================== ПРОВЕРКА ДЛЯ АДМИНА ====================
+
     if is_admin(user_id):
         tokens = 999999
         logger.info(f"👑 Админ {user_id} генерирует видео без списания токенов")
     else:
         tokens = await get_user_tokens_balance(user_id)
-        
+
         if tokens < required_tokens:
             await message.answer(
                 f"❌ Недостаточно токенов.\n\n"
@@ -1745,33 +1743,29 @@ async def generate_video(message: types.Message, state: FSMContext):
                 parse_mode=None
             )
             return
-    
-    # ==================== СПИСАНИЕ ТОКЕНОВ ====================
+
     if not is_admin(user_id):
         success = await deduct_tokens_with_check(
-            user_id, 
-            required_tokens, 
+            user_id,
+            required_tokens,
             f"Генерация видео {duration} сек на {model.get('name', '...')}"
         )
-        
+
         if not success:
             await message.answer(
                 "❌ Ошибка списания токенов. Попробуйте позже.",
                 parse_mode="HTML"
             )
             return
-    
+
     loading = await message.answer(
         f"🎬 Генерирую видео ({duration} сек) на {model.get('name', '...')}...\n"
         f"⏳ Это может занять 1-5 минут."
     )
-    
+
     try:
-        # ============================================================
-        # РЕАЛЬНЫЙ ЗАПРОС К GenAPI ЧЕРЕЗ ai_service
-        # ============================================================
         api_model = model.get("api_model", "ltx-video")
-        
+
         video_result = await ai_service.generate(
             provider_type="video",
             response_type=ResponseType.VIDEO,
@@ -1780,55 +1774,48 @@ async def generate_video(message: types.Message, state: FSMContext):
             duration=duration,
             size="1280x720"
         )
-        
+
         if video_result.status != GenerationStatus.SUCCESS:
             error_msg = video_result.metadata.get("error", "Неизвестная ошибка")
             raise Exception(f"Ошибка генерации: {error_msg}")
-        
-        # Парсим ответ
+
         video_data = json.loads(video_result.content)
         video_url = video_data.get("url")
-        
+
         if not video_url:
             raise Exception("URL видео не получен от API")
-        
-        # ============================================================
-        # ФОРМИРУЕМ ПОДПИСЬ
-        # ============================================================
+
         caption = (
             f"🎬 Видео готово!\n\n"
             f"🎯 Модель: {model.get('name', '...')}\n"
             f"⏱️ Длительность: {duration} сек\n"
             f"🤖 Промт: {prompt[:100]}{'...' if len(prompt) > 100 else ''}\n"
         )
-        
+
         if is_admin(user_id):
             caption += f"👑 Админ — токены не списаны"
         else:
             caption += f"📊 Потрачено: {required_tokens} токенов\n"
             caption += f"💳 Осталось: {tokens - required_tokens} токенов"
-        
-        # ============================================================
-        # ОТПРАВКА ВИДЕО
-        # ============================================================
+
         await message.answer_video(
             video=video_url,
             caption=caption,
             parse_mode="HTML"
         )
-        
+
     except Exception as e:
         logger.error(f"Ошибка генерации видео: {e}")
-        
+
         if not is_admin(user_id):
             await token_repository.refund_tokens(user_id, required_tokens, f"Возврат за ошибку видео")
-        
+
         await message.answer(
-            f"❌ Ошибка при генерации видео: {str(e)}" + 
+            f"❌ Ошибка при генерации видео: {str(e)}" +
             ("" if is_admin(user_id) else " Токены возвращены."),
             parse_mode=None
         )
-    
+
     finally:
         await loading.delete()
 
@@ -1936,12 +1923,12 @@ async def marketplace_platform(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Назад":
         await cancel_marketplace(message, state)
         return
-    
+
     valid_platforms = ["🛍️ Wildberries", "🛒 Ozon", "📦 Яндекс.Маркет", "🛍️ AliExpress", "🌐 Другое"]
     if message.text not in valid_platforms:
         await message.answer("❌ Выберите площадку из кнопок.", reply_markup=get_marketplace_platform_keyboard())
         return
-    
+
     await state.update_data(platform=message.text)
     await state.set_state(MarketplaceStates.task)
     await message.answer(
@@ -1965,7 +1952,7 @@ async def marketplace_task(message: types.Message, state: FSMContext):
             reply_markup=get_marketplace_platform_keyboard()
         )
         return
-    
+
     await state.update_data(task=message.text)
     await state.set_state(MarketplaceStates.category)
     await message.answer(
@@ -2062,7 +2049,7 @@ async def user_cabinet(message: types.Message, state: FSMContext):
     text_used = await get_user_usage_today(message.from_user.id, ResponseType.TEXT)
     image_used = await get_user_usage_today(message.from_user.id, ResponseType.IMAGE)
     video_used = await get_user_usage_today(message.from_user.id, ResponseType.VIDEO)
-    
+
     tokens = await get_user_tokens_balance(message.from_user.id)
 
     text_limit = tariff.get("text_limit", 0)
@@ -2141,7 +2128,7 @@ async def show_tokens_packages(callback: types.CallbackQuery):
     """Показать пакеты токенов (из callback)."""
     user_id = callback.from_user.id
     tokens = await get_user_tokens_balance(user_id)
-    
+
     text = f"🪙 Пакеты токенов\n\n"
     text += f"💰 Ваш баланс: {tokens} кредитов\n\n"
     text += "Разовое пополнение для любых задач:\n"
@@ -2221,7 +2208,7 @@ async def tariff_selected(callback: types.CallbackQuery, state: FSMContext):
 async def buy_tokens_package(callback: types.CallbackQuery):
     """Покупка пакета токенов."""
     amount = int(callback.data.replace("buy_tokens_", ""))
-    
+
     prices = {
         50: 69,
         150: 179,
@@ -2229,11 +2216,11 @@ async def buy_tokens_package(callback: types.CallbackQuery):
         1500: 1299,
         5000: 3999
     }
-    
+
     price = prices.get(amount, 0)
     user_id = callback.from_user.id
     current_tokens = await get_user_tokens_balance(user_id)
-    
+
     text = f"🪙 Пакет {amount} токенов\n\n"
     text += f"💰 Стоимость: {price} ₽\n"
     text += f"📊 Цена за токен: {price/amount:.2f} ₽\n"
@@ -2263,12 +2250,12 @@ async def confirm_tokens_payment(callback: types.CallbackQuery):
     amount = int(callback.data.replace("confirm_tokens_", ""))
     user_id = callback.from_user.id
     user = await user_repository.get_user(user_id)
-    
+
     username = callback.from_user.username or "нет"
     first_name = callback.from_user.first_name or ""
 
     admin_id = settings.ADMIN_TELEGRAM_ID
-    
+
     admin_text = (
         f"💰 Заявка на пополнение токенов\n\n"
         f"👤 Пользователь: {first_name} (@{username})\n"
@@ -2277,7 +2264,7 @@ async def confirm_tokens_payment(callback: types.CallbackQuery):
         f"💳 Текущий баланс: {user.tokens if user else 0} токенов\n\n"
         f"⏳ Ожидает подтверждения"
     )
-    
+
     await callback.bot.send_message(
         admin_id,
         admin_text,
@@ -2289,7 +2276,7 @@ async def confirm_tokens_payment(callback: types.CallbackQuery):
             ]
         ])
     )
-    
+
     await callback.message.edit_text(
         f"✅ Заявка на {amount} токенов отправлена!\n\n"
         f"Ожидайте подтверждения администратора.\n"
@@ -2308,17 +2295,17 @@ async def admin_approve_tokens(callback: types.CallbackQuery):
     if not is_admin(callback.from_user.id):
         await callback.answer("⛔ Только для администратора")
         return
-    
+
     parts = callback.data.split("_")
     user_id = int(parts[3])
     amount = int(parts[4])
-    
+
     success = await token_repository.add_tokens(
-        user_id, 
-        amount, 
+        user_id,
+        amount,
         f"Пополнение на {amount} токенов (админ)"
     )
-    
+
     if success:
         try:
             await callback.bot.send_message(
@@ -2330,7 +2317,7 @@ async def admin_approve_tokens(callback: types.CallbackQuery):
             )
         except Exception as e:
             logger.error(f"Не удалось уведомить пользователя: {e}")
-        
+
         await callback.message.edit_text(
             f"✅ Подтверждено! Пользователю {user_id} зачислено {amount} токенов.",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
@@ -2348,11 +2335,11 @@ async def admin_reject_tokens(callback: types.CallbackQuery):
     if not is_admin(callback.from_user.id):
         await callback.answer("⛔ Только для администратора")
         return
-    
+
     parts = callback.data.split("_")
     user_id = int(parts[3])
     amount = int(parts[4])
-    
+
     try:
         await callback.bot.send_message(
             user_id,
@@ -2363,7 +2350,7 @@ async def admin_reject_tokens(callback: types.CallbackQuery):
         )
     except Exception as e:
         logger.error(f"Не удалось уведомить пользователя: {e}")
-    
+
     await callback.message.edit_text(
         f"❌ Отклонено! Пользователю {user_id} отказано в пополнении.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[

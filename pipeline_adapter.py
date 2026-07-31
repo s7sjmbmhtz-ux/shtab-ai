@@ -4,7 +4,6 @@ from typing import Optional, Dict, Any
 from models import PipelineResult, AISession
 from tool_registry import tool_registry
 from ai_service import ai_service
-from execution_pipeline import ExecutionPipeline
 from database import limit_repository, request_repository
 from tools import prompt_registry
 
@@ -18,7 +17,7 @@ async def run_tool_pipeline(
     session: Optional[AISession] = None,
     mode: str = "initial",
     refinement_request: Optional[str] = None,
-    pipeline: Optional[ExecutionPipeline] = None
+    pipeline=None
 ) -> PipelineResult:
     try:
         tool = tool_registry.require(tool_id)
@@ -68,7 +67,9 @@ async def run_tool_pipeline(
             )
 
     try:
+        # Создаём ExecutionPipeline если не передан
         if pipeline is None:
+            from execution_pipeline import ExecutionPipeline
             pipeline = ExecutionPipeline(
                 ai_service=ai_service,
                 limit_repository=limit_repository,

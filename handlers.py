@@ -74,52 +74,48 @@ router = Router()
 
 VIDEO_MODELS = {
     "ltx": {
-        "name": "⚡ LTX Video",
+        "name": "⚡ LTX Video 2.3",
         "description": "Быстрая генерация, базовое качество",
         "price_per_second": 5,
-        "api_model": "ltx-video",
-        "max_duration": 15,
-        "resolution": "720p"
+        "api_model": "ltx-2-3",
+        "max_duration": 30,
+        "resolution": "1080p",
+        "mode": "pro"
     },
     "cogvideo": {
-        "name": "🎬 CogVideoX",
+        "name": "🎬 CogVideoX 5B",
         "description": "Хорошее качество, стабильный",
         "price_per_second": 12,
-        "api_model": "cogvideox",
+        "api_model": "cog-video-x-5b",
         "max_duration": 10,
         "resolution": "1080p"
     },
-    "kling_standard": {
-        "name": "🎥 Kling Standard",
-        "description": "Высокое качество",
+    "kling_o3": {
+        "name": "🎥 Kling Video O3",
+        "description": "Высокое качество, детализация",
         "price_per_second": 15,
-        "api_model": "kling-v1",
-        "max_duration": 10,
-        "resolution": "1080p"
+        "api_model": "kling-video-o3",
+        "max_duration": 15,
+        "resolution": "1080p",
+        "model_type": "text-to-video"
     },
-    "luma_ray2": {
-        "name": "🌈 Luma Ray2",
-        "description": "Современное качество, плавные движения",
-        "price_per_second": 20,
-        "api_model": "luma-ray2",
-        "max_duration": 9,
-        "resolution": "1080p"
-    },
-    "kling_pro": {
-        "name": "🌟 Kling Pro",
-        "description": "Очень высокое качество, детализация",
+    "kling_v3": {
+        "name": "🌟 Kling Video V3",
+        "description": "Очень высокое качество, до 15 сек",
         "price_per_second": 18,
-        "api_model": "kling-v1-pro",
-        "max_duration": 10,
-        "resolution": "1080p"
+        "api_model": "kling-video-v3",
+        "max_duration": 15,
+        "resolution": "1080p",
+        "model_type": "pro"
     },
     "veo_lite": {
         "name": "🌟 Veo 3.1 Lite",
         "description": "Очень высокое качество, оптимальный выбор",
         "price_per_second": 12,
-        "api_model": "veo-3.1-lite",
+        "api_model": "veo-3-1-lite",
         "max_duration": 15,
-        "resolution": "1080p"
+        "resolution": "1080p",
+        "model_type": "text-to-video"
     },
     "veo": {
         "name": "💎 Veo 3.1",
@@ -127,15 +123,26 @@ VIDEO_MODELS = {
         "price_per_second": 50,
         "api_model": "veo-3.1",
         "max_duration": 15,
-        "resolution": "4K"
+        "resolution": "4K",
+        "model_type": "txt2video"
     },
-    "runway_gen4": {
+    "luma": {
+        "name": "🌈 Luma Ray2",
+        "description": "Современное качество, плавные движения",
+        "price_per_second": 20,
+        "api_model": "luma",
+        "max_duration": 9,
+        "resolution": "1080p",
+        "model_type": "ray-2-flash"
+    },
+    "runway": {
         "name": "🎞️ Runway Gen-4",
         "description": "Профессиональное качество, кинематографичный стиль",
         "price_per_second": 25,
         "api_model": "runway-gen4",
         "max_duration": 10,
-        "resolution": "1080p"
+        "resolution": "1080p",
+        "model_type": "gen4_turbo"
     },
 }
 

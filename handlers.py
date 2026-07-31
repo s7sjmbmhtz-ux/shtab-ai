@@ -1823,10 +1823,10 @@ async def generate_video(message: types.Message, state: FSMContext):
             await token_repository.refund_tokens(user_id, required_tokens, f"Возврат за ошибку видео")
         
         await message.answer(
-            f"❌ Ошибка при генерации видео: {str(e)}" + 
-            ("" if is_admin(user_id) else " Токены возвращены."),
-            parse_mode="HTML"
-        )
+    f"❌ Ошибка при генерации видео: {str(e)}" + 
+    ("" if is_admin(user_id) else " Токены возвращены."),
+    parse_mode=None
+)
     
     finally:
         await loading.delete()

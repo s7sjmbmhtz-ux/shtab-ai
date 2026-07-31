@@ -2251,7 +2251,7 @@ async def buy_tokens_package(callback: types.CallbackQuery):
             [InlineKeyboardButton(text="✅ Я оплатил", callback_data=f"confirm_tokens_{amount}")],
             [InlineKeyboardButton(text="🔙 Назад к пакетам", callback_data="show_tokens")]
         ]),
-        parse_mode="HTML"
+        parse_mode=None
     )
     await callback.answer()
 

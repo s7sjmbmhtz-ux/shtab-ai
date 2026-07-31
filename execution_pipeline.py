@@ -6,7 +6,7 @@ from models import (
     ToolDefinition, AISession, PipelineResult,
     GenerationStatus, ResponseType, ValidationResult
 )
-from database import limit_repository, request_repository, db_manager
+from database import limit_repository, request_repository
 from tools import prompt_registry
 from services.usage_service import track_usage, get_user_usage_today
 from services.subscription_service import get_user_limit
@@ -50,14 +50,11 @@ class ExecutionPipeline:
         return await self._generate_and_save(tool, user_id, prompt, input_data)
 
     async def _validate(self, data: Dict[str, Any], tool: ToolDefinition) -> ValidationResult:
-        # Пропускаем валидацию для новых маркетинговых инструментов
-        # если они используют тот же tool_id, но с другими полями
         skip_validation_for = ["content_plan", "offer", "email", "utp", "audience_analysis"]
         
         if tool.id in skip_validation_for:
             return ValidationResult(ok=True)
         
-        # Для MARKETING_POST проверяем, что переданы все нужные поля
         if tool.id == "marketing_post":
             required_fields = ["product", "audience", "platform", "style"]
             for field in required_fields:
@@ -112,9 +109,6 @@ class ExecutionPipeline:
     ) -> PipelineResult:
         start_time = asyncio.get_event_loop().time()
 
-        # ============================================================
-        # ПОЛУЧАЕМ МОДЕЛЬ ПО ТАРИФУ
-        # ============================================================
         from services.subscription_service import get_user_tariff
         tariff = await get_user_tariff(user_id)
         model = get_model_for_tariff(tariff, tool.response_type)
@@ -125,9 +119,6 @@ class ExecutionPipeline:
             **tool.provider_kwargs
         }
 
-        # ============================================================
-        # ПРОВЕРКА ЛИМИТА (ПРОПУСК ДЛЯ АДМИНА)
-        # ============================================================
         if not is_admin(user_id):
             limit = await get_user_limit(user_id, tool.response_type)
             today_used = await get_user_usage_today(user_id, tool.response_type)
@@ -142,9 +133,6 @@ class ExecutionPipeline:
         else:
             logger.info(f"Админ {user_id} — лимиты отключены")
 
-        # ============================================================
-        # ГЕНЕРАЦИЯ
-        # ============================================================
         result = await self.ai_service.generate(
             provider_type=tool.provider_type,
             response_type=tool.response_type,
@@ -162,9 +150,6 @@ class ExecutionPipeline:
                 elapsed=elapsed
             )
 
-        # ============================================================
-        # СПИСАНИЕ ЛИМИТА (атомарно)
-        # ============================================================
         from services.usage_service import check_and_consume_limit
         allowed, used, remaining = await check_and_consume_limit(
             user_id, tool.response_type, limit if not is_admin(user_id) else 999999
@@ -178,9 +163,6 @@ class ExecutionPipeline:
                 elapsed=elapsed
             )
 
-        # ============================================================
-        # СОХРАНЕНИЕ ИСТОРИИ
-        # ============================================================
         history_id = await self.request_repo.save_request(
             user_id=user_id,
             section=tool.section or tool.id,
@@ -195,21 +177,15 @@ class ExecutionPipeline:
             status=result.status
         )
 
-        # ============================================================
-        # УЧЁТ РАСХОДОВ
-        # ============================================================
         await track_usage(
             user_id=user_id,
             tool_id=tool.id,
             model=model,
             response_type=tool.response_type,
-            tokens=None,  # TODO: получить из ответа
-            cost=None     # TODO: рассчитать из model_prices
+            tokens=None,
+            cost=None
         )
 
-        # ============================================================
-        # ПРИМЕНЯЕМ RESPONSE_TRANSFORMER
-        # ============================================================
         content = result.content
         if tool.response_transformer:
             content = tool.response_transformer(content, input_data)

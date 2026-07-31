@@ -12,7 +12,8 @@ def get_main_menu() -> ReplyKeyboardMarkup:
             KeyboardButton(text="📈 Маркетинг")
         ],
         [
-            KeyboardButton(text="🖼 Изображения")
+            KeyboardButton(text="🖼 Изображения"),
+            KeyboardButton(text="🎬 Видео")
         ],
         [
             KeyboardButton(text="🤖 AI Ассистент"),
@@ -243,6 +244,86 @@ def get_image_result_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="🏠 Меню", callback_data="image_menu")
     builder.adjust(2, 1)
     return builder.as_markup()
+
+
+# ==================== ВИДЕО ====================
+
+def get_video_menu_keyboard() -> ReplyKeyboardMarkup:
+    """Меню раздела «Видео»."""
+    buttons = [
+        [KeyboardButton(text="🎬 Создать видео")],
+        [KeyboardButton(text="⬅️ Назад")]
+    ]
+    return ReplyKeyboardMarkup(
+        keyboard=buttons,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+
+def get_video_models_keyboard() -> ReplyKeyboardMarkup:
+    """Клавиатура выбора модели для видео."""
+    buttons = [
+        [KeyboardButton(text="⚡ LTX Video — 10 токенов/сек")],
+        [KeyboardButton(text="🎬 CogVideoX — 35 токенов/сек")],
+        [KeyboardButton(text="🎥 Kling Standard — 30 токенов/сек")],
+        [KeyboardButton(text="🌟 Kling Pro — 56 токенов/сек")],
+        [KeyboardButton(text="🌟 Veo 3.1 Lite — 35 токенов/сек")],
+        [KeyboardButton(text="💎 Veo 3.1 — 200 токенов/сек")],
+        [KeyboardButton(text="🌈 Luma Ray2 — 40 токенов/сек")],
+        [KeyboardButton(text="🎞️ Runway Gen-4 — 60 токенов/сек")],
+        [KeyboardButton(text="⬅️ Назад")]
+    ]
+    return ReplyKeyboardMarkup(
+        keyboard=buttons,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+
+def get_video_duration_keyboard(max_duration: int = 30) -> ReplyKeyboardMarkup:
+    """Клавиатура выбора длительности видео."""
+    durations = []
+    
+    if max_duration >= 5:
+        durations.append(KeyboardButton(text="5 секунд"))
+    if max_duration >= 8:
+        durations.append(KeyboardButton(text="8 секунд"))
+    if max_duration >= 10:
+        durations.append(KeyboardButton(text="10 секунд"))
+    if max_duration >= 15:
+        durations.append(KeyboardButton(text="15 секунд"))
+    if max_duration >= 20:
+        durations.append(KeyboardButton(text="20 секунд"))
+    if max_duration >= 30:
+        durations.append(KeyboardButton(text="30 секунд"))
+    
+    # Разбиваем по 2 в строке
+    buttons = []
+    for i in range(0, len(durations), 2):
+        row = durations[i:i+2]
+        buttons.append(row)
+    
+    buttons.append([KeyboardButton(text="⬅️ Назад")])
+    
+    return ReplyKeyboardMarkup(
+        keyboard=buttons,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+
+def get_skip_photo_keyboard() -> ReplyKeyboardMarkup:
+    """Клавиатура пропуска фото."""
+    buttons = [
+        [KeyboardButton(text="⏭ Пропустить фото")],
+        [KeyboardButton(text="⬅️ Назад")]
+    ]
+    return ReplyKeyboardMarkup(
+        keyboard=buttons,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
 
 
 # ==================== AI РЕДАКТОР ====================

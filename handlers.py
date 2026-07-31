@@ -290,7 +290,22 @@ async def menu_balance(message: types.Message, state: FSMContext):
 @router.message(F.text == "💳 Купить кредиты")
 async def menu_buy_tokens(message: types.Message, state: FSMContext):
     """Купить кредиты."""
-    await show_tokens_packages(message, state)
+    user_id = message.from_user.id
+    tokens = await get_user_tokens_balance(user_id)
+    
+    text = f"🪙 **Пакеты токенов**\n\n"
+    text += f"💰 Ваш баланс: **{tokens}** кредитов\n\n"
+    text += "Разовое пополнение для любых задач:\n"
+    text += "✅ Токены не сгорают\n"
+    text += "✅ Подходят для всего: текст, изображения, видео\n"
+    text += "✅ Можно использовать в любое время\n\n"
+    text += "Выберите пакет:"
+
+    await message.answer(
+        text,
+        reply_markup=get_tokens_packages_keyboard(),
+        parse_mode="HTML"
+    )
 
 
 @router.message(F.text == "💎 Тарифы")

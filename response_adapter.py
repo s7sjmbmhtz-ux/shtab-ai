@@ -1,8 +1,9 @@
 import json
 import logging
 import base64
-import re
-from aiogram.types import Message, BufferedInputFile
+import tempfile
+import os
+from aiogram.types import Message, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 
 from models import PipelineResult, ResponseType
@@ -26,41 +27,6 @@ class TelegramResponseAdapter:
         else:
             return await self._send_text(message, result, success_text, keyboard, parse_mode)
 
-    def _clean_text(self, text: str) -> str:
-        """Очищает текст от Markdown и HTML, оставляя красивый читаемый текст."""
-        if not text:
-            return text
-        
-        # Убираем **жирный текст** → просто текст
-        text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
-        
-        # Убираем *курсив* → просто текст
-        text = re.sub(r'\*(.+?)\*', r'\1', text)
-        
-        # Убираем ## заголовки → просто текст
-        text = re.sub(r'^#+\s*(.+?)$', r'\1', text, flags=re.MULTILINE)
-        
-        # Убираем ссылки [текст](url) → просто текст
-        text = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', text)
-        
-        # Убираем ```код``` → просто текст
-        text = re.sub(r'```.+?```', '', text, flags=re.DOTALL)
-        text = re.sub(r'`(.+?)`', r'\1', text)
-        
-        # Убираем ___ и --- (разделители)
-        text = re.sub(r'_{3,}', '', text)
-        text = re.sub(r'-{3,}', '', text)
-        
-        # Убираем лишние пробелы и пустые строки
-        lines = text.split('\n')
-        cleaned_lines = []
-        for line in lines:
-            line = line.strip()
-            if line:  # не пустая строка
-                cleaned_lines.append(line)
-        
-        return '\n\n'.join(cleaned_lines)
-
     async def _send_text(
         self,
         message: Message,
@@ -69,16 +35,10 @@ class TelegramResponseAdapter:
         keyboard: InlineKeyboardMarkup = None,
         parse_mode: str = "HTML"
     ) -> bool:
-        # Очищаем текст от Markdown и HTML
-        content = self._clean_text(result.content)
-        
-        # Формируем красивый ответ
-        response_text = f"{success_text}\n\n{content}\n\n⏱ {result.elapsed:.2f} сек"
-        
         await message.answer(
-            response_text,
+            f"{success_text}\n\n{result.content}\n\n<i>⏱ {result.elapsed:.2f} сек</i>",
             reply_markup=keyboard,
-            parse_mode=None  # ← Отключаем HTML, чтобы не было тегов
+            parse_mode=parse_mode
         )
         return True
 
@@ -112,36 +72,41 @@ class TelegramResponseAdapter:
                     
                     image_data = base64.b64decode(encoded)
                     
-                    photo = BufferedInputFile(
-                        file=image_data,
-                        filename="image.png"
-                    )
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                        tmp.write(image_data)
+                        tmp_path = tmp.name
                     
+                    # Используем FSInputFile вместо open()
+                    photo = FSInputFile(tmp_path)
                     await message.answer_photo(
                         photo=photo,
-                        caption=f"{success_text}\n\n⏱ {result.elapsed:.2f} сек",
-                        reply_markup=keyboard
+                        caption=f"{success_text}\n\n<i>⏱ {result.elapsed:.2f} сек</i>",
+                        reply_markup=keyboard,
+                        parse_mode=parse_mode
                     )
+                    
+                    os.unlink(tmp_path)
                     return True
                     
                 except Exception as e:
                     logger.error(f"Ошибка обработки base64: {e}")
-                    await message.answer("❌ Ошибка обработки изображения")
+                    await message.answer("❌ Ошибка обработки изображения", parse_mode=parse_mode)
                     return False
             
             # Обычный URL
             await message.answer_photo(
                 photo=image_url,
-                caption=f"{success_text}\n\n⏱ {result.elapsed:.2f} сек",
-                reply_markup=keyboard
+                caption=f"{success_text}\n\n<i>⏱ {result.elapsed:.2f} сек</i>",
+                reply_markup=keyboard,
+                parse_mode=parse_mode
             )
             return True
             
         except json.JSONDecodeError as e:
             logger.error(f"Ошибка парсинга JSON для Image: {e}")
-            await message.answer("❌ Ошибка формата ответа")
+            await message.answer("❌ Ошибка формата ответа", parse_mode=parse_mode)
             return False
         except Exception as e:
             logger.error(f"Ошибка отправки изображения: {e}")
-            await message.answer("❌ Ошибка отправки изображения")
+            await message.answer("❌ Ошибка отправки изображения", parse_mode=parse_mode)
             return False

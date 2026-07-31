@@ -3,7 +3,7 @@
 """
 
 from datetime import datetime
-from typing import Union, Optional
+from typing import Union
 from database import db_manager
 from models import ResponseType
 from services.subscription_service import get_user_limit
@@ -14,54 +14,17 @@ async def get_user_usage_today(user_id: int, response_type: Union[str, ResponseT
     """Получить использование за сегодня."""
     if hasattr(response_type, 'value'):
         response_type = response_type.value
-
-    today = datetime.now().strftime("%Y-%m-%d")
-    async with db_manager.connection() as conn:
-        cursor = await conn.execute(
-            f"""
-            SELECT {response_type}_count as count FROM user_usage
-            WHERE user_id = ? AND date = ?
-            """,
-            (user_id, today)
-        )
-        row = await cursor.fetchone()
-        return row["count"] if row else 0
+    
+    return await db_manager.get_user_usage_today(user_id, response_type)
 
 
 async def track_usage(user_id: int, response_type: Union[str, ResponseType]):
     """Отследить использование."""
     if hasattr(response_type, 'value'):
         response_type = response_type.value
-
-    today = datetime.now().strftime("%Y-%m-%d")
-    async with db_manager.connection() as conn:
-        # Проверяем существование записи
-        cursor = await conn.execute(
-            "SELECT id FROM user_usage WHERE user_id = ? AND date = ?",
-            (user_id, today)
-        )
-        row = await cursor.fetchone()
-
-        if row:
-            await conn.execute(
-                f"""
-                UPDATE user_usage
-                SET {response_type}_count = {response_type}_count + 1
-                WHERE user_id = ? AND date = ?
-                """,
-                (user_id, today)
-            )
-        else:
-            await conn.execute(
-                f"""
-                INSERT INTO user_usage (user_id, date, {response_type}_count)
-                VALUES (?, ?, 1)
-                """,
-                (user_id, today)
-            )
-
-        await conn.commit()
-        logger.info(f"📊 Отслежено использование {response_type} для {user_id}")
+    
+    await db_manager.track_usage(user_id, response_type)
+    logger.info(f"📊 Отслежено использование {response_type} для {user_id}")
 
 
 async def check_and_consume_limit(user_id: int, limit_type: str) -> bool:

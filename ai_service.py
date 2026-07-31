@@ -55,7 +55,7 @@ class TextProvider(AIProvider):
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
 
         response = await self.client.post(
-            f"{self.base_url}/chat/completions",
+            f"{self.base_url}/v1/chat/completions",
             headers=headers,
             json=payload,
             timeout=timeout
@@ -135,7 +135,7 @@ class ImageProvider(AIProvider):
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
 
         response = await self.client.post(
-            f"{self.base_url}/images/generations",
+            f"{self.base_url}/v1/images/generations",
             headers=headers,
             json=payload,
             timeout=timeout
@@ -199,7 +199,7 @@ class ImageProvider(AIProvider):
 
 
 # ============================================================
-# VIDEO PROVIDER (GenAPI) — УНИВЕРСАЛЬНЫЙ
+# VIDEO PROVIDER (GenAPI) — УНИВЕРСАЛЬНЫЙ ДЛЯ ВСЕХ МОДЕЛЕЙ
 # ============================================================
 
 class VideoProvider(AIProvider):
@@ -237,16 +237,100 @@ class VideoProvider(AIProvider):
             })
         
         # ============================================================
-        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ
+        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ CogVideoX
         # ============================================================
-        if kwargs.get("image"):
-            payload["image_url"] = kwargs.get("image")
+        if model == "cog-video-x-5b":
+            payload.update({
+                "width": kwargs.get("width", 720),
+                "height": kwargs.get("height", 480),
+                "negative_prompt": kwargs.get("negative_prompt", "Distorted, discontinuous, Ugly, blurry, low resolution, motionless, static, disfigured, disconnected limbs, Ugly faces, incomplete arms"),
+                "num_inference_steps": kwargs.get("num_inference_steps", 50),
+                "guidance_scale": kwargs.get("guidance_scale", 7),
+                "seed": kwargs.get("seed", -1),
+                "use_rife": kwargs.get("use_rife", True),
+                "export_fps": kwargs.get("export_fps", 30)
+            })
         
-        if kwargs.get("end_image"):
-            payload["end_image_url"] = kwargs.get("end_image")
+        # ============================================================
+        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ Kling Video O3
+        # ============================================================
+        if model == "kling-video-o3":
+            payload.update({
+                "model": kwargs.get("model_type", "text-to-video"),
+                "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
+                "pro": kwargs.get("pro", False),
+                "generate_audio": kwargs.get("generate_audio", False)
+            })
+            if kwargs.get("start_image_url"):
+                payload["start_image_url"] = kwargs.get("start_image_url")
+            if kwargs.get("end_image_url"):
+                payload["end_image_url"] = kwargs.get("end_image_url")
         
-        if kwargs.get("negative_prompt"):
-            payload["negative_prompt"] = kwargs.get("negative_prompt")
+        # ============================================================
+        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ Kling Video V3
+        # ============================================================
+        if model == "kling-video-v3":
+            payload.update({
+                "model": kwargs.get("model_type", "pro"),
+                "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
+                "generate_audio": kwargs.get("generate_audio", True),
+                "negative_prompt": kwargs.get("negative_prompt", "blur, distort, and low quality"),
+                "cfg_scale": kwargs.get("cfg_scale", 0.5),
+                "shot_type": kwargs.get("shot_type", "customize")
+            })
+            if kwargs.get("start_image_url"):
+                payload["start_image_url"] = kwargs.get("start_image_url")
+            if kwargs.get("end_image_url"):
+                payload["end_image_url"] = kwargs.get("end_image_url")
+        
+        # ============================================================
+        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ Veo 3.1
+        # ============================================================
+        if model == "veo-3.1":
+            payload.update({
+                "model": kwargs.get("model_type", "txt2video")
+            })
+        
+        # ============================================================
+        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ Veo 3.1 Lite
+        # ============================================================
+        if model == "veo-3-1-lite":
+            payload.update({
+                "model": kwargs.get("model_type", "text-to-video")
+            })
+        
+        # ============================================================
+        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ Luma Ray2
+        # ============================================================
+        if model == "luma":
+            payload["user_prompt"] = prompt
+            del payload["prompt"]
+            payload.update({
+                "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
+                "expand_prompt": kwargs.get("expand_prompt", True),
+                "loop": kwargs.get("loop", False),
+                "resolution": kwargs.get("resolution", "720p"),
+                "duration": kwargs.get("duration_str", "5s"),
+                "model": kwargs.get("model_type", "ray-2-flash")
+            })
+            if kwargs.get("image_url"):
+                payload["image_url"] = kwargs.get("image_url")
+            if kwargs.get("image_end_url"):
+                payload["image_end_url"] = kwargs.get("image_end_url")
+        
+        # ============================================================
+        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ Runway Gen-4
+        # ============================================================
+        if model == "runway-gen4":
+            payload["promptText"] = prompt
+            del payload["prompt"]
+            payload.update({
+                "model": kwargs.get("model_type", "gen4_turbo"),
+                "duration": kwargs.get("duration", 5),
+                "ratio": kwargs.get("ratio", "1280:720")
+            })
+            if kwargs.get("firstFrame"):
+                payload["firstFrame"] = kwargs.get("firstFrame")
 
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
 
@@ -290,15 +374,11 @@ class VideoProvider(AIProvider):
                     response_type=ResponseType.VIDEO
                 )
 
-            # ============================================================
-            # ОБРАБОТКА РАЗНЫХ ФОРМАТОВ ОТВЕТА
-            # ============================================================
             video_url = None
             
             # Если это асинхронный запрос — возвращаем request_id
             if result.get("request_id") and result.get("status") == "starting":
                 logger.info(f"⏳ Видео генерируется, request_id: {result.get('request_id')}")
-                # TODO: Реализовать Long-Pooling или callback
                 return AIResponse(
                     content=json.dumps({"status": "processing", "request_id": result.get("request_id")}),
                     provider="genapi_video",

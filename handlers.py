@@ -148,7 +148,7 @@ async def start_handler(message: types.Message, state: FSMContext):
         "Выбери нужный раздел в меню ниже 👇"
     )
 
-    await message.answer(text, reply_markup=get_main_menu(), parse_mode="HTML")
+    await message.answer("текст", parse_mode=None)
     await state.clear()
     logger.info(f"Пользователь {message.from_user.id} выполнил /start")
 

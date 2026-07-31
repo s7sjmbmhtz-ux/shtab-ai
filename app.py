@@ -20,6 +20,7 @@ class Application:
         self.bot: Optional[Bot] = None
         self.dp: Optional[Dispatcher] = None
         self._shutdown_requested = False
+        self._polling_task: Optional[asyncio.Task] = None
 
     async def initialize(self) -> None:
         logger.info("🚀 Запуск ШТАБ AI...")
@@ -52,14 +53,24 @@ class Application:
         if self._shutdown_requested:
             return
         self._shutdown_requested = True
-        logger.info(f"🔄 Завершение работы {signame}...")
+        
+        if signame:
+            logger.info(f"🔄 Получен сигнал {signame}, завершение работы...")
+        else:
+            logger.info("🔄 Завершение работы...")
 
-        if self.dp:
+        # Останавливаем поллинг
+        if self.dp and self._polling_task and not self._polling_task.done():
             try:
-                await self.dp.stop_polling()
+                self.dp.stop_polling()
+                await asyncio.wait_for(self._polling_task, timeout=5.0)
                 logger.info("✅ Поллинг остановлен")
+            except asyncio.TimeoutError:
+                logger.warning("⚠️ Таймаут остановки поллинга")
+                self._polling_task.cancel()
             except Exception as e:
-                logger.error(f"Ошибка остановки поллинга: {e}")
+                if "Polling is not started" not in str(e):
+                    logger.error(f"Ошибка остановки поллинга: {e}")
 
         try:
             await ai_service.close()
@@ -85,22 +96,31 @@ class Application:
     async def run(self) -> None:
         try:
             await self.initialize()
+            
+            # Настраиваем обработчики сигналов
             loop = asyncio.get_event_loop()
-
+            
             def signal_handler(signame: str):
                 if not self._shutdown_requested:
                     logger.info(f"⚠️ Получен сигнал {signame}")
+                    # Создаём задачу для завершения
                     asyncio.create_task(self.shutdown(signame))
 
+            # Регистрируем обработчики сигналов
             for sig in (signal.SIGINT, signal.SIGTERM):
                 try:
                     loop.add_signal_handler(sig, lambda s=sig.name: signal_handler(s))
                 except NotImplementedError:
-                    logger.warning(f"Сигнал {sig.name} не поддерживается")
+                    logger.warning(f"Сигнал {sig.name} не поддерживается в этой ОС")
 
-            logger.info("✅ Бот запущен и готов к работе")
-            await self.dp.start_polling(self.bot)
+            logger.info("✅ Бот запущен и готов к работе!")
+            
+            # Запускаем поллинг в отдельной задаче
+            self._polling_task = asyncio.create_task(self.dp.start_polling(self.bot))
+            await self._polling_task
 
+        except asyncio.CancelledError:
+            logger.info("⏹ Задача поллинга отменена")
         except KeyboardInterrupt:
             logger.info("⏹ Получен сигнал прерывания")
         except Exception as e:

@@ -4,6 +4,7 @@
 
 import json
 import re
+import asyncio
 from aiogram import Router, types, F
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -32,6 +33,10 @@ from keyboards import (
     get_tariffs_keyboard,
     get_marketplace_platform_keyboard,
     get_marketplace_task_keyboard,
+    get_video_menu_keyboard,
+    get_video_models_keyboard,
+    get_video_duration_keyboard,
+    get_skip_photo_keyboard,
     PLATFORM_MAP, STYLE_MAP, PURPOSE_MAP, IMAGE_STYLE_MAP, SIZE_MAP,
     OPERATION_MAP, LANGUAGE_MAP
 )
@@ -47,6 +52,76 @@ from services.usage_service import get_user_usage_today, track_usage
 from tariffs import get_tariff, get_all_tariffs
 
 router = Router()
+
+
+# ==================== ВИДЕО МОДЕЛИ ====================
+
+VIDEO_MODELS = {
+    "ltx": {
+        "name": "⚡ LTX Video",
+        "description": "Быстрая генерация, базовое качество",
+        "price_per_second": 10,
+        "api_model": "ltx-video",
+        "max_duration": 30,
+        "resolution": "720p"
+    },
+    "cogvideo": {
+        "name": "🎬 CogVideoX",
+        "description": "Хорошее качество, стабильный",
+        "price_per_second": 35,
+        "api_model": "cogvideox",
+        "max_duration": 10,
+        "resolution": "1080p"
+    },
+    "kling_standard": {
+        "name": "🎥 Kling Standard",
+        "description": "Высокое качество",
+        "price_per_second": 30,
+        "api_model": "kling-v1",
+        "max_duration": 10,
+        "resolution": "1080p"
+    },
+    "kling_pro": {
+        "name": "🌟 Kling Pro",
+        "description": "Очень высокое качество, детализация",
+        "price_per_second": 56,
+        "api_model": "kling-v1-pro",
+        "max_duration": 10,
+        "resolution": "1080p"
+    },
+    "veo_lite": {
+        "name": "🌟 Veo 3.1 Lite",
+        "description": "Очень высокое качество, оптимальный выбор",
+        "price_per_second": 35,
+        "api_model": "veo-3.1-lite",
+        "max_duration": 30,
+        "resolution": "1080p"
+    },
+    "veo": {
+        "name": "💎 Veo 3.1",
+        "description": "Максимальное качество, до 4K",
+        "price_per_second": 200,
+        "api_model": "veo-3.1",
+        "max_duration": 30,
+        "resolution": "4K"
+    },
+    "luma_ray2": {
+        "name": "🌈 Luma Ray2",
+        "description": "Современное качество, плавные движения",
+        "price_per_second": 40,
+        "api_model": "luma-ray2",
+        "max_duration": 9,
+        "resolution": "1080p"
+    },
+    "runway_gen4": {
+        "name": "🎞️ Runway Gen-4",
+        "description": "Профессиональное качество, кинематографичный стиль",
+        "price_per_second": 60,
+        "api_model": "runway-gen4",
+        "max_duration": 10,
+        "resolution": "1080p"
+    },
+}
 
 
 # ==================== FSM STATES ====================
@@ -124,6 +199,16 @@ class ImageStates(StatesGroup):
     size = State()
     result = State()
     refinement = State()
+
+
+class VideoStates(StatesGroup):
+    menu = State()
+    model_choice = State()
+    waiting_prompt = State()
+    waiting_photo = State()
+    waiting_duration = State()
+    processing = State()
+    result = State()
 
 
 class EditorStates(StatesGroup):
@@ -750,6 +835,12 @@ async def back_from_marketing_menu(message: types.Message, state: FSMContext):
 
 @router.message(StateFilter(ImageStates.menu), F.text == "⬅️ Назад")
 async def back_from_image_menu(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("👋 Главное меню", reply_markup=get_main_menu())
+
+
+@router.message(StateFilter(VideoStates.menu), F.text == "⬅️ Назад")
+async def back_from_video_menu(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer("👋 Главное меню", reply_markup=get_main_menu())
 
@@ -1404,6 +1495,263 @@ async def image_menu(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+# ==================== ВИДЕО ====================
+
+@router.message(F.text == "🎬 Видео")
+async def enter_video(message: types.Message, state: FSMContext):
+    """Вход в раздел «Видео»."""
+    await state.clear()
+    await state.set_state(VideoStates.menu)
+    
+    text = (
+        "🎬 **Раздел «Видео»**\n\n"
+        "Создавайте видео с помощью нейросетей.\n\n"
+        "📌 **Как это работает:**\n"
+        "1. Выберите модель\n"
+        "2. Напишите промт\n"
+        "3. (Опционально) Загрузите фото-референс\n"
+        "4. Выберите длительность\n"
+        "5. Получите готовое видео\n\n"
+        "💡 Токены списываются за каждую секунду видео."
+    )
+    
+    await message.answer(
+        text,
+        reply_markup=get_video_menu_keyboard(),
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(VideoStates.menu), F.text == "🎬 Создать видео")
+async def start_video_creation(message: types.Message, state: FSMContext):
+    """Начало создания видео — выбор модели."""
+    await state.set_state(VideoStates.model_choice)
+    
+    text = "🎬 **Выберите модель для генерации видео:**\n\n"
+    
+    for key, model in VIDEO_MODELS.items():
+        text += (
+            f"• **{model['name']}**\n"
+            f"  _{model['description']}_\n"
+            f"  💰 {model['price_per_second']} токенов/сек\n"
+            f"  📐 {model['resolution']} | ⏱️ до {model['max_duration']} сек\n\n"
+        )
+    
+    await message.answer(
+        text,
+        reply_markup=get_video_models_keyboard(),
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(VideoStates.menu), F.text == "⬅️ Назад")
+async def back_from_video_menu(message: types.Message, state: FSMContext):
+    """Возврат в главное меню из раздела видео."""
+    await state.clear()
+    await message.answer("👋 Главное меню", reply_markup=get_main_menu())
+
+
+@router.message(StateFilter(VideoStates.model_choice))
+async def choose_video_model(message: types.Message, state: FSMContext):
+    """Обработка выбора модели."""
+    if message.text == "⬅️ Назад":
+        await state.set_state(VideoStates.menu)
+        await message.answer(
+            "🎬 Раздел «Видео»",
+            reply_markup=get_video_menu_keyboard()
+        )
+        return
+    
+    selected_model = None
+    for key, model in VIDEO_MODELS.items():
+        if model["name"] in message.text:
+            selected_model = {**model, "key": key}
+            break
+    
+    if not selected_model:
+        await message.answer(
+            "❌ Пожалуйста, выберите модель из кнопок выше.",
+            reply_markup=get_video_models_keyboard()
+        )
+        return
+    
+    await state.update_data(model=selected_model)
+    await state.set_state(VideoStates.waiting_prompt)
+    
+    await message.answer(
+        f"✅ Выбрана модель: **{selected_model['name']}**\n\n"
+        "📝 Напишите промт (описание того, что хотите создать).\n\n"
+        "📸 *Опционально:* вы также можете загрузить фото как референс.\n"
+        "Просто отправьте фото до или после промта.",
+        reply_markup=get_skip_photo_keyboard(),
+        parse_mode="HTML"
+    )
+
+
+@router.message(StateFilter(VideoStates.waiting_prompt), F.photo)
+async def get_photo_on_video_prompt(message: types.Message, state: FSMContext):
+    """Обработка фото на этапе промта."""
+    photo = message.photo[-1]
+    file_id = photo.file_id
+    await state.update_data(photo_file_id=file_id)
+    await message.answer(
+        "📸 Фото получено! Теперь напишите промт.\n"
+        "Если хотите сгенерировать только по тексту — просто отправьте текст.",
+        reply_markup=get_skip_photo_keyboard()
+    )
+
+
+@router.message(StateFilter(VideoStates.waiting_prompt))
+async def get_video_prompt(message: types.Message, state: FSMContext):
+    """Получение промта для видео."""
+    if message.text == "⬅️ Назад":
+        await cancel_video_creation(message, state)
+        return
+    
+    if message.text == "⏭ Пропустить фото":
+        await state.update_data(photo_file_id=None)
+        await message.answer("⏭ Фото пропущено. Продолжаем с текстовым промптом.")
+        return
+    
+    if len(message.text) < 3:
+        await message.answer("❌ Промт слишком короткий. Напишите хотя бы 3 символа.")
+        return
+    
+    await state.update_data(prompt=message.text)
+    await state.set_state(VideoStates.waiting_duration)
+    
+    data = await state.get_data()
+    model = data.get("model", {})
+    max_duration = model.get("max_duration", 30)
+    
+    await message.answer(
+        f"⏱️ **Выберите длительность видео:**\n\n"
+        f"💡 Максимальная длительность для этой модели: {max_duration} сек",
+        reply_markup=get_video_duration_keyboard(max_duration)
+    )
+
+
+@router.message(StateFilter(VideoStates.waiting_duration))
+async def get_video_duration(message: types.Message, state: FSMContext):
+    """Получение длительности видео."""
+    if message.text == "⬅️ Назад":
+        await cancel_video_creation(message, state)
+        return
+    
+    duration_map = {
+        "5 секунд": 5,
+        "8 секунд": 8,
+        "10 секунд": 10,
+        "15 секунд": 15,
+        "20 секунд": 20,
+        "30 секунд": 30,
+    }
+    
+    if message.text not in duration_map:
+        await message.answer(
+            "❌ Выберите длительность из кнопок.",
+            reply_markup=get_video_duration_keyboard()
+        )
+        return
+    
+    duration = duration_map[message.text]
+    
+    data = await state.get_data()
+    model = data.get("model", {})
+    max_duration = model.get("max_duration", 30)
+    
+    if duration > max_duration:
+        await message.answer(
+            f"❌ Для модели **{model.get('name', '...')}** максимальная длительность — {max_duration} сек.\n"
+            f"Пожалуйста, выберите меньшее значение.",
+            reply_markup=get_video_duration_keyboard(max_duration)
+        )
+        return
+    
+    await state.update_data(duration=duration)
+    await generate_video(message, state)
+
+
+async def generate_video(message: types.Message, state: FSMContext):
+    """Генерация видео."""
+    data = await state.get_data()
+    user_id = message.from_user.id
+    
+    model = data.get("model", {})
+    prompt = data.get("prompt", "")
+    duration = data.get("duration", 5)
+    photo_file_id = data.get("photo_file_id")
+    
+    price_per_second = model.get("price_per_second", 30)
+    required_tokens = duration * price_per_second
+    
+    # Проверяем баланс токенов
+    from database.user_repository import get_user_tokens, deduct_tokens
+    tokens = await get_user_tokens(user_id)
+    
+    if tokens < required_tokens:
+        await message.answer(
+            f"❌ **Недостаточно токенов.**\n\n"
+            f"🎯 Модель: {model.get('name', '...')}\n"
+            f"⏱️ Длительность: {duration} сек\n"
+            f"💰 Нужно: **{required_tokens}** токенов\n"
+            f"💳 У вас: **{tokens}** токенов\n\n"
+            f"Пополните баланс в разделе 💎 Токены.",
+            parse_mode="HTML"
+        )
+        return
+    
+    # Списываем токены
+    await deduct_tokens(user_id, required_tokens)
+    
+    loading = await message.answer(
+        f"🎬 Генерирую видео ({duration} сек) на {model.get('name', '...')}...\n"
+        f"⏳ Это может занять 1-5 минут."
+    )
+    
+    try:
+        # TODO: Интеграция с GenAPI
+        # Пока заглушка
+        await asyncio.sleep(3)
+        
+        # Отправляем видео пользователю
+        await message.answer_video(
+            video="https://example.com/video.mp4",  # Заменить на реальный URL
+            caption=(
+                f"🎬 **Видео готово!**\n\n"
+                f"🎯 Модель: {model.get('name', '...')}\n"
+                f"⏱️ Длительность: {duration} сек\n"
+                f"📊 Потрачено: **{required_tokens}** токенов\n"
+                f"💳 Осталось: **{tokens - required_tokens}** токенов"
+            ),
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        # Возвращаем токены при ошибке
+        from database.user_repository import add_tokens
+        await add_tokens(user_id, required_tokens)
+        logger.error(f"Ошибка генерации видео: {e}")
+        await message.answer(
+            "❌ Ошибка при генерации видео. Токены возвращены.\n\n"
+            f"💳 Ваш баланс: **{tokens}** токенов",
+            parse_mode="HTML"
+        )
+    
+    finally:
+        await loading.delete()
+
+
+async def cancel_video_creation(message: types.Message, state: FSMContext):
+    """Отмена создания видео."""
+    await state.clear()
+    await state.set_state(VideoStates.menu)
+    await message.answer(
+        "❌ Отменено.",
+        reply_markup=get_video_menu_keyboard()
+    )
+
+
 # ==================== AI АССИСТЕНТ ====================
 
 @router.message(F.text == "🤖 AI Ассистент")
@@ -1652,6 +2000,7 @@ async def user_cabinet(message: types.Message, state: FSMContext):
     text += f"  ✅ Продажи\n"
     text += f"  ✅ Маркетинг\n"
     text += f"  ✅ Изображения\n"
+    text += f"  ✅ Видео\n"
     text += f"  ✅ AI Ассистент\n"
     text += f"  ✅ Маркетплейс\n\n"
 
@@ -1801,6 +2150,14 @@ async def back_to_main(message: types.Message, state: FSMContext):
         ImageStates.size,
         ImageStates.result
     ]
+    video_states = [
+        VideoStates.model_choice,
+        VideoStates.waiting_prompt,
+        VideoStates.waiting_photo,
+        VideoStates.waiting_duration,
+        VideoStates.processing,
+        VideoStates.result,
+    ]
     marketplace_states = [
         MarketplaceStates.platform,
         MarketplaceStates.task,
@@ -1825,6 +2182,10 @@ async def back_to_main(message: types.Message, state: FSMContext):
         await state.clear()
         await state.set_state(ImageStates.menu)
         await message.answer("🖼 Изображения", reply_markup=get_images_menu_keyboard())
+    elif current in video_states:
+        await state.clear()
+        await state.set_state(VideoStates.menu)
+        await message.answer("🎬 Видео", reply_markup=get_video_menu_keyboard())
     elif current in marketplace_states:
         await state.clear()
         await state.set_state(MarketplaceStates.menu)

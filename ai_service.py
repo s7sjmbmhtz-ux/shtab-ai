@@ -2,7 +2,7 @@ import httpx
 import asyncio
 import json
 import base64
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from abc import ABC, abstractmethod
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
@@ -32,6 +32,11 @@ class TextProvider(AIProvider):
         retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
     )
     async def _make_request(self, prompt: str, model: str, temperature: float) -> str:
+        # Проверка API-ключа
+        if not self.api_key or self.api_key == "":
+            logger.error("❌ API-ключ пустой! Проверьте GENAPI_API_KEY в .env")
+            raise ValueError("API-ключ не настроен")
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
@@ -42,16 +47,29 @@ class TextProvider(AIProvider):
             ],
             "temperature": temperature
         }
+        
+        # Убираем None
+        payload = {k: v for k, v in payload.items() if v is not None}
 
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
 
+        # Исправляем URL
+        base_url = self.base_url.rstrip('/')
+        url = f"{base_url}/api/v1/networks/{model}"
+        logger.info(f"📤 TEXT API запрос: {url}")
+        logger.info(f"📤 Payload: {json.dumps(payload, ensure_ascii=False)}")
+
         response = await self.client.post(
-            f"{self.base_url}/api/v1/networks/{model}",
+            url,
             headers=headers,
             json=payload,
             timeout=timeout
         )
+        
+        logger.info(f"📥 Ответ: статус {response.status_code}")
+        logger.info(f"📥 Тело: {response.text[:500]}")
         response.raise_for_status()
+        
         data = response.json()
         
         if "choices" in data and len(data["choices"]) > 0:
@@ -84,6 +102,17 @@ class TextProvider(AIProvider):
                 status=GenerationStatus.SUCCESS,
                 response_type=ResponseType.TEXT
             )
+        except httpx.HTTPStatusError as e:
+            logger.error(f"❌ HTTP ошибка: {e.response.status_code}")
+            logger.error(f"❌ Ответ API: {e.response.text[:500]}")
+            return AIResponse(
+                content="",
+                provider="genapi",
+                model=model,
+                status=GenerationStatus.ERROR,
+                metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"},
+                response_type=ResponseType.TEXT
+            )
         except Exception as e:
             logger.error(f"❌ Ошибка генерации текста: {e}")
             return AIResponse(
@@ -108,6 +137,10 @@ class ImageProvider(AIProvider):
         retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
     )
     async def _make_request(self, prompt: str, size: str, model: str) -> Dict[str, Any]:
+        if not self.api_key or self.api_key == "":
+            logger.error("❌ API-ключ пустой! Проверьте GENAPI_API_KEY в .env")
+            raise ValueError("API-ключ не настроен")
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
@@ -117,15 +150,24 @@ class ImageProvider(AIProvider):
             "size": size,
             "n": 1
         }
+        payload = {k: v for k, v in payload.items() if v is not None}
 
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
 
+        base_url = self.base_url.rstrip('/')
+        url = f"{base_url}/api/v1/networks/{model}"
+        logger.info(f"📤 IMAGE API запрос: {url}")
+        logger.info(f"📤 Payload: {json.dumps(payload, ensure_ascii=False)}")
+
         response = await self.client.post(
-            f"{self.base_url}/api/v1/networks/{model}",
+            url,
             headers=headers,
             json=payload,
             timeout=timeout
         )
+        
+        logger.info(f"📥 Ответ: статус {response.status_code}")
+        logger.info(f"📥 Тело: {response.text[:500]}")
         response.raise_for_status()
         return response.json()
 
@@ -172,6 +214,17 @@ class ImageProvider(AIProvider):
                 metadata=response_data
             )
 
+        except httpx.HTTPStatusError as e:
+            logger.error(f"❌ HTTP ошибка: {e.response.status_code}")
+            logger.error(f"❌ Ответ API: {e.response.text[:500]}")
+            return AIResponse(
+                content="",
+                provider="genapi",
+                model=model,
+                status=GenerationStatus.ERROR,
+                response_type=ResponseType.IMAGE,
+                metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
+            )
         except Exception as e:
             logger.error(f"❌ Ошибка генерации изображения: {e}")
             return AIResponse(
@@ -189,16 +242,40 @@ class VideoProvider(AIProvider):
         self.client = client
         self.api_key = settings.GENAPI_API_KEY
         self.base_url = settings.GENAPI_BASE_URL
-        self.max_wait_time = 600  # 10 минут на генерацию видео
+        self.max_wait_time = 600
+
+    def _clean_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Убирает все None и пустые значения из payload."""
+        cleaned = {}
+        for k, v in payload.items():
+            if v is None:
+                continue
+            if isinstance(v, dict):
+                cleaned[k] = self._clean_payload(v)
+            elif isinstance(v, list):
+                cleaned[k] = [x for x in v if x is not None]
+            else:
+                cleaned[k] = v
+        return cleaned
+
+    async def _get_endpoint(self, model: str) -> str:
+        """Получение правильного эндпоинта для модели."""
+        # Все модели используют один эндпоинт
+        return f"/api/v1/networks/{model}"
 
     async def _check_status(self, request_id: str) -> Dict[str, Any]:
         """Проверка статуса видео по request_id."""
+        if not self.api_key or self.api_key == "":
+            logger.error("❌ API-ключ пустой!")
+            raise ValueError("API-ключ не настроен")
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
         
-        url = f"{self.base_url}/api/v1/request/get/{request_id}"
+        base_url = self.base_url.rstrip('/')
+        url = f"{base_url}/api/v1/request/get/{request_id}"
         logger.info(f"🔍 Проверка статуса: {url}")
         
         response = await self.client.get(
@@ -206,8 +283,40 @@ class VideoProvider(AIProvider):
             headers=headers,
             timeout=30
         )
+        
+        logger.info(f"📥 Статус ответа: {response.status_code}")
+        logger.info(f"📥 Тело: {response.text[:500]}")
         response.raise_for_status()
         return response.json()
+
+    async def _wait_for_video(self, request_id: str, timeout: int = 600) -> Optional[Dict[str, Any]]:
+        """Ожидание готовности видео с проверкой статуса."""
+        start_time = asyncio.get_event_loop().time()
+        check_interval = 5
+        
+        while (asyncio.get_event_loop().time() - start_time) < timeout:
+            try:
+                status = await self._check_status(request_id)
+                logger.info(f"📊 Статус видео: {status.get('status')}, прогресс: {status.get('progress', 0)}%")
+                
+                if status.get("status") == "success":
+                    return status
+                elif status.get("status") in ["failed", "error"]:
+                    logger.error(f"❌ Генерация видео провалилась: {status}")
+                    return status
+                elif status.get("status") in ["starting", "processing", "queued", "pending"]:
+                    await asyncio.sleep(check_interval)
+                    continue
+                else:
+                    logger.warning(f"⚠️ Неизвестный статус: {status}")
+                    await asyncio.sleep(check_interval)
+                    
+            except Exception as e:
+                logger.error(f"❌ Ошибка проверки статуса: {e}")
+                await asyncio.sleep(check_interval)
+        
+        logger.error(f"⏰ Таймаут ожидания видео ({timeout} сек)")
+        return None
 
     @retry(
         stop=stop_after_attempt(3),
@@ -215,6 +324,10 @@ class VideoProvider(AIProvider):
         retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
     )
     async def _make_request(self, prompt: str, model: str, **kwargs) -> Dict[str, Any]:
+        if not self.api_key or self.api_key == "":
+            logger.error("❌ API-ключ пустой! Проверьте GENAPI_API_KEY в .env")
+            raise ValueError("API-ключ не настроен")
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -222,18 +335,10 @@ class VideoProvider(AIProvider):
         }
         
         # ============================================================
-        # БАЗОВЫЙ PAYLOAD
+        # БАЗОВЫЙ PAYLOAD — ТОЛЬКО ПРОМТ!
         # ============================================================
-        duration = kwargs.get("duration", 5)
-        
-        # Для Veo и Luma duration всегда со строкой "s"
-        if model in ["veo-3.1", "veo-3-1-lite", "luma"]:
-            duration = f"{duration}s"
-        
         payload = {
-            "callback_url": None,
-            "prompt": prompt,
-            "duration": duration
+            "prompt": prompt
         }
         
         # ============================================================
@@ -241,6 +346,7 @@ class VideoProvider(AIProvider):
         # ============================================================
         if model == "ltx-2-3":
             payload.update({
+                "duration": kwargs.get("duration", 5),
                 "mode": kwargs.get("mode", "pro"),
                 "resolution": kwargs.get("resolution", "1080p"),
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
@@ -251,8 +357,9 @@ class VideoProvider(AIProvider):
         # ============================================================
         # CogVideoX 5B
         # ============================================================
-        if model == "cog-video-x-5b":
+        elif model == "cog-video-x-5b":
             payload.update({
+                "duration": kwargs.get("duration", 5),
                 "width": kwargs.get("width", 720),
                 "height": kwargs.get("height", 480),
                 "negative_prompt": kwargs.get("negative_prompt", "Distorted, discontinuous, Ugly, blurry, low resolution, motionless, static, disfigured, disconnected limbs, Ugly faces, incomplete arms"),
@@ -266,8 +373,9 @@ class VideoProvider(AIProvider):
         # ============================================================
         # Kling Video O3
         # ============================================================
-        if model == "kling-video-o3":
+        elif model == "kling-video-o3":
             payload.update({
+                "duration": kwargs.get("duration", 5),
                 "model": kwargs.get("model_type", "text-to-video"),
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
                 "pro": kwargs.get("pro", False),
@@ -283,8 +391,9 @@ class VideoProvider(AIProvider):
         # ============================================================
         # Kling Video V3
         # ============================================================
-        if model == "kling-video-v3":
+        elif model == "kling-video-v3":
             payload.update({
+                "duration": kwargs.get("duration", 5),
                 "model": kwargs.get("model_type", "pro"),
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
                 "generate_audio": kwargs.get("generate_audio", True),
@@ -300,8 +409,9 @@ class VideoProvider(AIProvider):
         # ============================================================
         # Veo 3.1
         # ============================================================
-        if model == "veo-3.1":
+        elif model == "veo-3.1":
             payload.update({
+                "duration": f"{kwargs.get('duration', 5)}s",
                 "mode": kwargs.get("mode", "txt2video"),
                 "resolution": kwargs.get("resolution", "720p"),
                 "generate_audio": kwargs.get("generate_audio", True),
@@ -320,8 +430,9 @@ class VideoProvider(AIProvider):
         # ============================================================
         # Veo 3.1 Lite
         # ============================================================
-        if model == "veo-3-1-lite":
+        elif model == "veo-3-1-lite":
             payload.update({
+                "duration": f"{kwargs.get('duration', 5)}s",
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
                 "resolution": kwargs.get("resolution", "720p"),
                 "generate_audio": kwargs.get("generate_audio", True),
@@ -339,10 +450,11 @@ class VideoProvider(AIProvider):
         # ============================================================
         # Luma Ray2
         # ============================================================
-        if model == "luma":
+        elif model == "luma":
             payload["user_prompt"] = prompt
             del payload["prompt"]
             payload.update({
+                "duration": f"{kwargs.get('duration', 5)}s",
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
                 "expand_prompt": kwargs.get("expand_prompt", True),
                 "loop": kwargs.get("loop", False),
@@ -357,23 +469,36 @@ class VideoProvider(AIProvider):
         # ============================================================
         # Runway Gen-4
         # ============================================================
-        if model == "runway-gen4":
+        elif model == "runway-gen4":
             payload["promptText"] = prompt
             del payload["prompt"]
             payload.update({
+                "duration": kwargs.get("duration", 5),
                 "model": kwargs.get("model_type", "gen4_turbo"),
                 "ratio": kwargs.get("ratio", "1280:720")
             })
             if kwargs.get("firstFrame"):
                 payload["firstFrame"] = kwargs.get("firstFrame")
-            else:
-                raise ValueError("Runway Gen-4 requires firstFrame (image)")
+        
+        # ============================================================
+        # НЕИЗВЕСТНАЯ МОДЕЛЬ
+        # ============================================================
+        else:
+            payload["duration"] = kwargs.get("duration", 5)
+            logger.warning(f"⚠️ Неизвестная модель: {model}, используется базовый payload")
 
-        timeout = getattr(settings, 'AI_TIMEOUT', 120)
+        # ============================================================
+        # УБИРАЕМ ВСЕ None ИЗ PAYLOAD
+        # ============================================================
+        payload = self._clean_payload(payload)
 
-        url = f"{self.base_url}/api/v1/networks/{model}"
+        timeout = getattr(settings, 'AI_TIMEOUT', 600)
+
+        base_url = self.base_url.rstrip('/')
+        endpoint = await self._get_endpoint(model)
+        url = f"{base_url}{endpoint}"
         logger.info(f"📤 Video API запрос: {url}")
-        logger.info(f"📤 Payload: {payload}")
+        logger.info(f"📤 Payload: {json.dumps(payload, ensure_ascii=False)}")
 
         response = await self.client.post(
             url,
@@ -381,37 +506,11 @@ class VideoProvider(AIProvider):
             json=payload,
             timeout=timeout
         )
+        
+        logger.info(f"📥 Ответ: статус {response.status_code}")
+        logger.info(f"📥 Тело: {response.text[:500]}")
         response.raise_for_status()
         return response.json()
-
-    async def _wait_for_video(self, request_id: str, timeout: int = 600) -> Optional[Dict[str, Any]]:
-        """Ожидание готовности видео с проверкой статуса."""
-        start_time = asyncio.get_event_loop().time()
-        check_interval = 5  # проверяем каждые 5 секунд
-        
-        while (asyncio.get_event_loop().time() - start_time) < timeout:
-            try:
-                status = await self._check_status(request_id)
-                logger.info(f"📊 Статус видео: {status.get('status')}, прогресс: {status.get('progress', 0)}%")
-                
-                if status.get("status") == "success":
-                    return status
-                elif status.get("status") == "failed":
-                    logger.error(f"❌ Генерация видео провалилась: {status}")
-                    return None
-                elif status.get("status") in ["starting", "processing", "queued"]:
-                    await asyncio.sleep(check_interval)
-                    continue
-                else:
-                    logger.warning(f"⚠️ Неизвестный статус: {status}")
-                    await asyncio.sleep(check_interval)
-                    
-            except Exception as e:
-                logger.error(f"❌ Ошибка проверки статуса: {e}")
-                await asyncio.sleep(check_interval)
-        
-        logger.error(f"⏰ Таймаут ожидания видео ({timeout} сек)")
-        return None
 
     async def generate(self, prompt: str, **kwargs) -> AIResponse:
         model = kwargs.get("model", settings.FREE_VIDEO_MODEL)
@@ -447,10 +546,6 @@ class VideoProvider(AIProvider):
             if request_id:
                 logger.info(f"⏳ Видео генерируется, request_id: {request_id}")
                 
-                # Отправляем сообщение пользователю о начале генерации
-                # (это будет обработано в handlers.py)
-                
-                # Ждём готовности видео
                 final_result = await self._wait_for_video(request_id)
                 
                 if not final_result:
@@ -461,6 +556,16 @@ class VideoProvider(AIProvider):
                         status=GenerationStatus.ERROR,
                         response_type=ResponseType.VIDEO,
                         metadata={"error": "Таймаут ожидания видео или ошибка генерации"}
+                    )
+                
+                if final_result.get("status") in ["failed", "error"]:
+                    return AIResponse(
+                        content="",
+                        provider="genapi_video",
+                        model=model,
+                        status=GenerationStatus.ERROR,
+                        response_type=ResponseType.VIDEO,
+                        metadata={"error": f"Ошибка генерации: {final_result.get('error', 'Неизвестная ошибка')}"}
                     )
                 
                 # Извлекаем URL из результата
@@ -555,6 +660,17 @@ class VideoProvider(AIProvider):
                 metadata=response_data
             )
 
+        except httpx.HTTPStatusError as e:
+            logger.error(f"❌ HTTP ошибка Video API: {e.response.status_code}")
+            logger.error(f"❌ Ответ API: {e.response.text[:500]}")
+            return AIResponse(
+                content="",
+                provider="genapi_video",
+                model=model,
+                status=GenerationStatus.ERROR,
+                response_type=ResponseType.VIDEO,
+                metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
+            )
         except Exception as e:
             logger.error(f"❌ Ошибка генерации видео: {e}")
             return AIResponse(
@@ -584,10 +700,11 @@ class AudioProvider(AIProvider):
 
 class AIService:
     def __init__(self):
-        timeout = getattr(settings, 'AI_TIMEOUT', 600)  # Увеличиваем до 600 секунд
+        timeout = getattr(settings, 'AI_TIMEOUT', 600)
         self.client = httpx.AsyncClient(
             timeout=timeout,
-            limits=httpx.Limits(max_keepalive_connections=10, max_connections=50)
+            limits=httpx.Limits(max_keepalive_connections=10, max_connections=50),
+            http2=False  # ← Добавляем для совместимости
         )
         self._providers = {
             "text": TextProvider(self.client),

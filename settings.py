@@ -15,6 +15,11 @@ class Settings:
 
     # ADMIN
     ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", "548576688"))
+    
+    # Для обратной совместимости в admin.py
+    @property
+    def admin_telegram_id(self):
+        return self.ADMIN_TELEGRAM_ID
 
     # DATABASE
     DB_PATH = os.getenv("DB_PATH", "ai_shtab.db")
@@ -56,7 +61,11 @@ class Settings:
     BUSINESS_TEXT_LIMIT = int(os.getenv("BUSINESS_TEXT_LIMIT", "500"))
     BUSINESS_IMAGE_LIMIT = int(os.getenv("BUSINESS_IMAGE_LIMIT", "100"))
 
-    # Алиас для обратной совместимости (чтобы работало и settings.db_path, и settings.DB_PATH)
+    # AUDIO
+    MAX_AUDIO_DURATION_SEC = int(os.getenv("MAX_AUDIO_DURATION_SEC", "300"))
+    MAX_AUDIO_SIZE_MB = int(os.getenv("MAX_AUDIO_SIZE_MB", "20"))
+
+    # Алиас для обратной совместимости
     @property
     def db_path(self):
         return self.DB_PATH

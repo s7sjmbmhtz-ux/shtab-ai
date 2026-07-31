@@ -286,7 +286,6 @@ def get_video_models_keyboard() -> ReplyKeyboardMarkup:
         [KeyboardButton(text="🌟 Kling Pro — 18 токенов/сек")],
         [KeyboardButton(text="🌟 Veo 3.1 Lite — 12 токенов/сек")],
         [KeyboardButton(text="💎 Veo 3.1 — 50 токенов/сек")],
-        [KeyboardButton(text="🎞️ Runway Gen-4 — 25 токенов/сек")],
         [KeyboardButton(text="🔙 Назад")]
     ]
     return ReplyKeyboardMarkup(

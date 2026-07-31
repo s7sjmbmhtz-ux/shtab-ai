@@ -1714,6 +1714,7 @@ async def get_video_duration(message: types.Message, state: FSMContext):
 
 
 async def generate_video(message: types.Message, state: FSMContext):
+async def generate_video(message: types.Message, state: FSMContext):
     """Генерация видео через GenAPI."""
     data = await state.get_data()
     user_id = message.from_user.id

@@ -1558,25 +1558,23 @@ async def image_menu(callback: types.CallbackQuery, state: FSMContext):
 
 @router.message(F.text == "🎬 Создать видео")
 async def enter_video(message: types.Message, state: FSMContext):
-    """Вход в раздел «Видео»."""
+    """Вход в раздел «Видео» — сразу показывает модели."""
     await state.clear()
-    await state.set_state(VideoStates.menu)
+    await state.set_state(VideoStates.model_choice)
     
-    text = (
-        "🎬 **Раздел «Видео»**\n\n"
-        "Создавайте видео с помощью нейросетей.\n\n"
-        "📌 **Как это работает:**\n"
-        "1. Выберите модель\n"
-        "2. Напишите промт\n"
-        "3. (Опционально) Загрузите фото-референс\n"
-        "4. Выберите длительность\n"
-        "5. Получите готовое видео\n\n"
-        "💡 Токены списываются за каждую секунду видео."
-    )
+    text = "🎬 **Выберите модель для генерации видео:**\n\n"
+    
+    for key, model in VIDEO_MODELS.items():
+        text += (
+            f"• **{model['name']}**\n"
+            f"  _{model['description']}_\n"
+            f"  💰 {model['price_per_second']} токенов/сек\n"
+            f"  📐 {model['resolution']} | ⏱️ до {model['max_duration']} сек\n\n"
+        )
     
     await message.answer(
         text,
-        reply_markup=get_video_menu_keyboard(),
+        reply_markup=get_video_models_keyboard(),
         parse_mode="HTML"
     )
 

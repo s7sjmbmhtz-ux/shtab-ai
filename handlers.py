@@ -1822,17 +1822,17 @@ async def generate_video(message: types.Message, state: FSMContext):
         # ФОРМИРУЕМ ПОДПИСЬ
         # ============================================================
         caption = (
-            f"🎬 **Видео готово!**\n\n"
-            f"🎯 Модель: {model.get('name', '...')}\n"
-            f"⏱️ Длительность: {duration} сек\n"
-            f"🤖 Промт: {prompt[:100]}{'...' if len(prompt) > 100 else ''}\n"
-        )
-        
-        if is_admin(user_id):
-            caption += f"👑 **Админ — токены не списаны**"
-        else:
-            caption += f"📊 Потрачено: **{required_tokens}** токенов\n"
-            caption += f"💳 Осталось: **{tokens - required_tokens}** токенов"
+    f"🎬 Видео готово!\n\n"
+    f"🎯 Модель: {model.get('name', '...')}\n"
+    f"⏱️ Длительность: {duration} сек\n"
+    f"🤖 Промт: {prompt[:100]}{'...' if len(prompt) > 100 else ''}\n"
+)
+
+if is_admin(user_id):
+    caption += f"👑 Админ — токены не списаны"
+else:
+    caption += f"📊 Потрачено: {required_tokens} токенов\n"
+    caption += f"💳 Осталось: {tokens - required_tokens} токенов"
         
         # ============================================================
         # ОТПРАВКА ВИДЕО

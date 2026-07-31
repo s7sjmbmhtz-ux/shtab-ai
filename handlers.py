@@ -3,6 +3,7 @@
 """
 
 import json
+import re
 from aiogram import Router, types, F
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -537,22 +538,60 @@ async def generate_analysis(message: types.Message, state: FSMContext):
     data = await state.get_data()
     text = data.get("text", "")
 
+    if len(text) < 10:
+        await message.answer("❌ Текст слишком короткий. Отправьте диалог (минимум 10 символов).")
+        return
+
     loading = await message.answer("📊 Анализирую переписку...")
 
     try:
-        result = await execute_tool(
-            tool_id=ToolIds.SALES_SCRIPT,
-            user_id=message.from_user.id,
-            input_data={
-                "product": "Анализ переписки",
-                "client": "Менеджер",
-                "audience": "Менеджер по продажам",
-                "average_check": "0",
-                "communication_format": "Переписка",
-                "objections": f"Проанализируй этот диалог и дай рекомендации:\n\n{text}"
-            },
-            session=None,
-            mode="initial"
+        # Формируем специальный промпт для анализа
+        analysis_prompt = f"""
+Проанализируй эту переписку как эксперт по продажам.
+
+Переписка:
+{text}
+
+Выполни следующий анализ:
+
+1. Кто участники диалога? (кто продавец, кто клиент)
+
+2. Качество обработки возражений:
+   - Какие возражения выдвинул клиент?
+   - Как продавец на них отреагировал?
+   - Что можно было сделать лучше?
+
+3. Эффективность вопросов продавца:
+   - Какие вопросы задал продавец?
+   - Помогли ли они продвинуть сделку?
+   - Какие вопросы нужно было задать?
+
+4. Точки роста (ошибки продавца):
+   - Что продавец сделал неправильно?
+   - Какие фразы убили сделку?
+   - Где продавец упустил возможность?
+
+5. Рекомендации по улучшению:
+   - Конкретные фразы, которые нужно использовать
+   - Стратегия ответов на возражения
+   - Как довести диалог до сделки
+
+6. Оценка переписки (от 1 до 10):
+   - Поставь общую оценку качеству работы продавца
+
+Напиши ответ в виде структурированного отчёта. Будь конкретным, без общих фраз. Дай практические советы.
+"""
+
+        # Вызываем AI напрямую через ai_service
+        from ai_service import ai_service
+        from models import ResponseType, GenerationStatus
+        
+        ai_result = await ai_service.generate(
+            provider_type="text",
+            response_type=ResponseType.TEXT,
+            prompt=analysis_prompt,
+            model="deepseek-chat",
+            temperature=0.7
         )
 
         try:
@@ -560,12 +599,26 @@ async def generate_analysis(message: types.Message, state: FSMContext):
         except Exception:
             pass
 
-        await send_pipeline_result(
-            message,
-            state,
-            result,
-            "📊 Анализ переписки готов!",
-            None
+        if ai_result.status != GenerationStatus.SUCCESS:
+            await message.answer("❌ Ошибка генерации анализа. Попробуйте позже.")
+            return
+
+        # Очищаем текст от маркдауна
+        content = ai_result.content
+        
+        # Убираем **
+        content = re.sub(r'\*\*(.+?)\*\*', r'\1', content)
+        content = re.sub(r'\*(.+?)\*', r'\1', content)
+        content = re.sub(r'^#+\s*(.+?)$', r'\1', content, flags=re.MULTILINE)
+        content = re.sub(r'_{3,}', '', content)
+        content = re.sub(r'-{3,}', '', content)
+
+        # Сохраняем в состояние
+        await state.update_data(last_response=ai_result.content)
+
+        await message.answer(
+            f"📊 Анализ переписки\n\n{content}\n\n⏱ {ai_result.elapsed:.2f} сек",
+            reply_markup=None
         )
 
     except Exception as e:
@@ -1062,11 +1115,11 @@ async def cancel_assistant(message: types.Message, state: FSMContext):
 @router.message(F.text == "🛒 Маркетплейсы")
 async def enter_marketplace(message: types.Message, state: FSMContext):
     await state.clear()
-    await state.set_state(MarketplaceStates.menu)
+    await state.set_state(MarketplaceStates.platform)
     await message.answer(
         "🛒 Маркетплейсы\n\n"
         "Шаг 1 из 4\nВыберите площадку:",
-        reply_markup=get_back_to_menu_keyboard()
+        reply_markup=get_marketplace_platform_keyboard()
     )
 
 
@@ -1075,6 +1128,13 @@ async def marketplace_platform(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Назад":
         await cancel_marketplace(message, state)
         return
+    
+    # Проверяем, что выбрана площадка
+    valid_platforms = ["🛍️ Wildberries", "🛒 Ozon", "📦 Яндекс.Маркет", "🛍️ AliExpress", "🌐 Другое"]
+    if message.text not in valid_platforms:
+        await message.answer("❌ Выберите площадку из кнопок.", reply_markup=get_marketplace_platform_keyboard())
+        return
+    
     await state.update_data(platform=message.text)
     await state.set_state(MarketplaceStates.task)
     await message.answer(
@@ -1085,15 +1145,20 @@ async def marketplace_platform(message: types.Message, state: FSMContext):
         "• улучшить название\n"
         "• сделать SEO-текст\n"
         "• ответить клиенту",
-        reply_markup=get_back_to_menu_keyboard()
+        reply_markup=get_marketplace_task_keyboard()  # ← новая клавиатура
     )
 
 
 @router.message(StateFilter(MarketplaceStates.task))
 async def marketplace_task(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Назад":
-        await cancel_marketplace(message, state)
+        await state.set_state(MarketplaceStates.platform)
+        await message.answer(
+            "Шаг 1 из 4\nВыберите площадку:",
+            reply_markup=get_marketplace_platform_keyboard()
+        )
         return
+    
     await state.update_data(task=message.text)
     await state.set_state(MarketplaceStates.category)
     await message.answer(
@@ -1105,7 +1170,11 @@ async def marketplace_task(message: types.Message, state: FSMContext):
 @router.message(StateFilter(MarketplaceStates.category))
 async def marketplace_category(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Назад":
-        await cancel_marketplace(message, state)
+        await state.set_state(MarketplaceStates.task)
+        await message.answer(
+            "Шаг 2 из 4\nЧто нужно сделать?",
+            reply_markup=get_marketplace_task_keyboard()
+        )
         return
     await state.update_data(category=message.text)
     await state.set_state(MarketplaceStates.product_info)
@@ -1118,7 +1187,11 @@ async def marketplace_category(message: types.Message, state: FSMContext):
 @router.message(StateFilter(MarketplaceStates.product_info))
 async def marketplace_product_info(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Назад":
-        await cancel_marketplace(message, state)
+        await state.set_state(MarketplaceStates.category)
+        await message.answer(
+            "Шаг 3 из 4\nКатегория товара?",
+            reply_markup=get_back_to_menu_keyboard()
+        )
         return
     await state.update_data(product_info=message.text)
     await generate_marketplace(message, state)

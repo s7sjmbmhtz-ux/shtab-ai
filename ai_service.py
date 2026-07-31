@@ -1,5 +1,3 @@
-# ai_service.py — версия с GenAPI
-
 import httpx
 import asyncio
 import json
@@ -16,11 +14,19 @@ from models import (
 from utils import logger
 
 
+# ============================================================
+# AI PROVIDER (ABSTRACT)
+# ============================================================
+
 class AIProvider(ABC):
     @abstractmethod
     async def generate(self, prompt: str, **kwargs) -> AIResponse:
         pass
 
+
+# ============================================================
+# TEXT PROVIDER (GenAPI)
+# ============================================================
 
 class TextProvider(AIProvider):
     def __init__(self, client: httpx.AsyncClient):
@@ -49,7 +55,8 @@ class TextProvider(AIProvider):
         response = await self.client.post(
             f"{self.base_url}/chat/completions",
             headers=headers,
-            json=payload
+            json=payload,
+            timeout=settings.AI_TIMEOUT
         )
         response.raise_for_status()
         data = response.json()
@@ -59,7 +66,7 @@ class TextProvider(AIProvider):
         return data.get("result", data.get("response", str(data)))
 
     async def generate(self, prompt: str, **kwargs) -> AIResponse:
-        model = kwargs.get("model", "deepseek/deepseek-v4-flash")
+        model = kwargs.get("model", settings.FREE_TEXT_MODEL)
         temperature = kwargs.get("temperature", 0.7)
 
         try:
@@ -96,6 +103,10 @@ class TextProvider(AIProvider):
             )
 
 
+# ============================================================
+# IMAGE PROVIDER (GenAPI)
+# ============================================================
+
 class ImageProvider(AIProvider):
     def __init__(self, client: httpx.AsyncClient):
         self.client = client
@@ -122,14 +133,15 @@ class ImageProvider(AIProvider):
         response = await self.client.post(
             f"{self.base_url}/images/generations",
             headers=headers,
-            json=payload
+            json=payload,
+            timeout=settings.AI_TIMEOUT
         )
         response.raise_for_status()
         return response.json()
 
     async def generate(self, prompt: str, **kwargs) -> AIResponse:
         size = kwargs.get("size", "1024x1024")
-        model = kwargs.get("model", "flux-schnell")
+        model = kwargs.get("model", settings.FREE_IMAGE_MODEL)
 
         try:
             start_time = asyncio.get_event_loop().time()
@@ -182,10 +194,15 @@ class ImageProvider(AIProvider):
             )
 
 
+# ============================================================
+# AISERVICE (ФАСАД)
+# ============================================================
+
 class AIService:
     def __init__(self):
+        timeout = getattr(settings, 'AI_TIMEOUT', 120)
         self.client = httpx.AsyncClient(
-            timeout=settings.AI_TIMEOUT,
+            timeout=timeout,
             limits=httpx.Limits(max_keepalive_connections=10, max_connections=50)
         )
         self._providers = {
@@ -193,7 +210,13 @@ class AIService:
             "image": ImageProvider(self.client),
         }
 
-    async def generate(self, provider_type: str = "text", response_type: ResponseType = ResponseType.TEXT, prompt: str = "", **kwargs) -> AIResponse:
+    async def generate(
+        self,
+        provider_type: str = "text",
+        response_type: ResponseType = ResponseType.TEXT,
+        prompt: str = "",
+        **kwargs
+    ) -> AIResponse:
         provider = self._providers.get(provider_type)
         if not provider:
             raise ValueError(f"Unsupported provider: {provider_type}")

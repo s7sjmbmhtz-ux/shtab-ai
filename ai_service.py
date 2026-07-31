@@ -225,7 +225,7 @@ class VideoProvider(AIProvider):
         }
         
         # ============================================================
-        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ LTX 2.3
+        # LTX 2.3
         # ============================================================
         if model == "ltx-2-3":
             payload.update({
@@ -237,7 +237,7 @@ class VideoProvider(AIProvider):
             })
         
         # ============================================================
-        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ CogVideoX
+        # CogVideoX 5B
         # ============================================================
         if model == "cog-video-x-5b":
             payload.update({
@@ -252,22 +252,34 @@ class VideoProvider(AIProvider):
             })
         
         # ============================================================
-        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ Kling Video O3
+        # Kling Video O3
         # ============================================================
         if model == "kling-video-o3":
             payload.update({
                 "model": kwargs.get("model_type", "text-to-video"),
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
                 "pro": kwargs.get("pro", False),
-                "generate_audio": kwargs.get("generate_audio", False)
+                "generate_audio": kwargs.get("generate_audio", False),
+                "shot_type": kwargs.get("shot_type", "customize"),
+                "keep_audio": kwargs.get("keep_audio", False)
             })
+            if kwargs.get("multi_prompt"):
+                payload["multi_prompt"] = kwargs.get("multi_prompt")
+            if kwargs.get("elements"):
+                payload["elements"] = kwargs.get("elements")
+            if kwargs.get("voice_ids"):
+                payload["voice_ids"] = kwargs.get("voice_ids")
             if kwargs.get("start_image_url"):
                 payload["start_image_url"] = kwargs.get("start_image_url")
             if kwargs.get("end_image_url"):
                 payload["end_image_url"] = kwargs.get("end_image_url")
+            if kwargs.get("image_urls"):
+                payload["image_urls"] = kwargs.get("image_urls")
+            if kwargs.get("video_url"):
+                payload["video_url"] = kwargs.get("video_url")
         
         # ============================================================
-        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ Kling Video V3
+        # Kling Video V3
         # ============================================================
         if model == "kling-video-v3":
             payload.update({
@@ -278,29 +290,63 @@ class VideoProvider(AIProvider):
                 "cfg_scale": kwargs.get("cfg_scale", 0.5),
                 "shot_type": kwargs.get("shot_type", "customize")
             })
+            if kwargs.get("multi_prompt"):
+                payload["multi_prompt"] = kwargs.get("multi_prompt")
+            if kwargs.get("elements"):
+                payload["elements"] = kwargs.get("elements")
+            if kwargs.get("voice_ids"):
+                payload["voice_ids"] = kwargs.get("voice_ids")
             if kwargs.get("start_image_url"):
                 payload["start_image_url"] = kwargs.get("start_image_url")
             if kwargs.get("end_image_url"):
                 payload["end_image_url"] = kwargs.get("end_image_url")
         
         # ============================================================
-        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ Veo 3.1
+        # Veo 3.1
         # ============================================================
         if model == "veo-3.1":
             payload.update({
-                "model": kwargs.get("model_type", "txt2video")
+                "mode": kwargs.get("mode", "txt2video"),
+                "resolution": kwargs.get("resolution", "720p"),
+                "duration": kwargs.get("duration_str", "8s"),
+                "generate_audio": kwargs.get("generate_audio", True),
+                "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
+                "enhance_prompt": kwargs.get("enhance_prompt", False),
+                "fast": kwargs.get("fast", False),
+                "auto_fix": kwargs.get("auto_fix", True)
             })
+            if kwargs.get("negative_prompt"):
+                payload["negative_prompt"] = kwargs.get("negative_prompt")
+            if kwargs.get("seed"):
+                payload["seed"] = kwargs.get("seed")
+            if kwargs.get("image_urls"):
+                payload["image_urls"] = kwargs.get("image_urls")
+            if kwargs.get("mode") == "first-last-frame-to-video":
+                if kwargs.get("end_image_url"):
+                    payload["end_image_url"] = kwargs.get("end_image_url")
         
         # ============================================================
-        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ Veo 3.1 Lite
+        # Veo 3.1 Lite
         # ============================================================
         if model == "veo-3-1-lite":
             payload.update({
-                "model": kwargs.get("model_type", "text-to-video")
+                "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
+                "resolution": kwargs.get("resolution", "720p"),
+                "duration": kwargs.get("duration_str", "8s"),
+                "generate_audio": kwargs.get("generate_audio", True),
+                "auto_fix": kwargs.get("auto_fix", True)
             })
+            if kwargs.get("negative_prompt"):
+                payload["negative_prompt"] = kwargs.get("negative_prompt")
+            if kwargs.get("seed"):
+                payload["seed"] = kwargs.get("seed")
+            if kwargs.get("image_url"):
+                payload["image_url"] = kwargs.get("image_url")
+            if kwargs.get("last_frame_url"):
+                payload["last_frame_url"] = kwargs.get("last_frame_url")
         
         # ============================================================
-        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ Luma Ray2
+        # Luma Ray2
         # ============================================================
         if model == "luma":
             payload["user_prompt"] = prompt
@@ -319,7 +365,7 @@ class VideoProvider(AIProvider):
                 payload["image_end_url"] = kwargs.get("image_end_url")
         
         # ============================================================
-        # ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ ДЛЯ Runway Gen-4
+        # Runway Gen-4
         # ============================================================
         if model == "runway-gen4":
             payload["promptText"] = prompt
@@ -329,8 +375,12 @@ class VideoProvider(AIProvider):
                 "duration": kwargs.get("duration", 5),
                 "ratio": kwargs.get("ratio", "1280:720")
             })
+            # firstFrame — обязательный параметр!
             if kwargs.get("firstFrame"):
                 payload["firstFrame"] = kwargs.get("firstFrame")
+            else:
+                logger.error("❌ Для Runway Gen-4 обязательно нужно изображение (firstFrame)")
+                raise ValueError("Runway Gen-4 requires firstFrame (image)")
 
         timeout = getattr(settings, 'AI_TIMEOUT', 120)
 
@@ -359,6 +409,14 @@ class VideoProvider(AIProvider):
             kwargs_copy.pop("model", None)
             kwargs_copy.pop("duration", None)
             kwargs_copy.pop("size", None)
+            
+            # Для Veo 3.1 и Veo 3.1 Lite добавляем duration_str
+            if model in ["veo-3.1", "veo-3-1-lite"]:
+                kwargs_copy["duration_str"] = f"{duration}s"
+            
+            # Для Luma Ray2 добавляем duration_str
+            if model == "luma":
+                kwargs_copy["duration_str"] = f"{duration}s"
             
             result = await self._make_request(prompt=prompt, model=model, **kwargs_copy)
             elapsed = asyncio.get_event_loop().time() - start_time

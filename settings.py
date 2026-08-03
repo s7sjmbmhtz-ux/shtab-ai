@@ -1,10 +1,19 @@
 import os
 import json
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
-print(f"🔑 API Key from env: {os.getenv('GENAPI_API_KEY')}")
-print(f"🔑 Settings.GENAPI_API_KEY: {settings.GENAPI_API_KEY}")
+# ============================================================
+# ЯВНАЯ ЗАГРУЗКА .env ИЗ ПАПКИ С ФАЙЛОМ
+# ============================================================
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path)
+
+# ДИАГНОСТИКА — ПРОВЕРЯЕМ, ЧТО КЛЮЧ ЗАГРУЗИЛСЯ
+print(f"📁 .env path: {env_path}")
+print(f"🔑 GENAPI_API_KEY from env: {os.getenv('GENAPI_API_KEY')}")
+print(f"🔑 GENAPI_BASE_URL from env: {os.getenv('GENAPI_BASE_URL')}")
+
 
 class Settings:
     # ============================================================
@@ -103,3 +112,9 @@ class Settings:
 
 
 settings = Settings()
+
+# ============================================================
+# ДИАГНОСТИКА — ПРОВЕРЯЕМ, ЧТО ЗАГРУЗИЛОСЬ В ОБЪЕКТ SETTINGS
+# ============================================================
+print(f"🔑 settings.GENAPI_API_KEY: {settings.GENAPI_API_KEY}")
+print(f"🔑 settings.GENAPI_BASE_URL: {settings.GENAPI_BASE_URL}")

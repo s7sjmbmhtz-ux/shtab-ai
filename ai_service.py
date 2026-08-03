@@ -372,11 +372,11 @@ class VideoProvider(AIProvider):
         }
         
         # ============================================================
-        # LTX 2.3
+        # LTX 2.3 — duration КАК ЧИСЛО (int)
         # ============================================================
         if model == "ltx-2-3":
             payload.update({
-                "duration": kwargs.get("duration", 5),
+                "duration": int(kwargs.get("duration", 5)),
                 "mode": kwargs.get("mode", "pro"),
                 "resolution": kwargs.get("resolution", "1080p"),
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
@@ -389,7 +389,7 @@ class VideoProvider(AIProvider):
         # ============================================================
         elif model == "cog-video-x-5b":
             payload.update({
-                "duration": kwargs.get("duration", 5),
+                "duration": int(kwargs.get("duration", 5)),
                 "width": kwargs.get("width", 720),
                 "height": kwargs.get("height", 480),
                 "negative_prompt": kwargs.get("negative_prompt", "Distorted, discontinuous, Ugly, blurry, low resolution, motionless, static, disfigured, disconnected limbs, Ugly faces, incomplete arms"),
@@ -405,7 +405,7 @@ class VideoProvider(AIProvider):
         # ============================================================
         elif model == "kling-video-o3":
             payload.update({
-                "duration": kwargs.get("duration", 5),
+                "duration": int(kwargs.get("duration", 5)),
                 "model": kwargs.get("model_type", "text-to-video"),
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
                 "pro": kwargs.get("pro", False),
@@ -423,7 +423,7 @@ class VideoProvider(AIProvider):
         # ============================================================
         elif model == "kling-video-v3":
             payload.update({
-                "duration": kwargs.get("duration", 5),
+                "duration": int(kwargs.get("duration", 5)),
                 "model": kwargs.get("model_type", "pro"),
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
                 "generate_audio": kwargs.get("generate_audio", True),
@@ -437,7 +437,7 @@ class VideoProvider(AIProvider):
                 payload["end_image_url"] = kwargs["end_image_url"]
         
         # ============================================================
-        # Veo 3.1
+        # Veo 3.1 — duration КАК СТРОКА (с 's')
         # ============================================================
         elif model == "veo-3.1":
             if "image_urls" in kwargs and kwargs["image_urls"]:
@@ -463,7 +463,7 @@ class VideoProvider(AIProvider):
                 payload["image_urls"] = kwargs["image_urls"]
         
         # ============================================================
-        # Veo 3.1 Lite
+        # Veo 3.1 Lite — duration КАК СТРОКА (с 's')
         # ============================================================
         elif model == "veo-3-1-lite":
             payload.update({
@@ -483,7 +483,7 @@ class VideoProvider(AIProvider):
                 payload["last_frame_url"] = kwargs["last_frame_url"]
         
         # ============================================================
-        # Luma Ray2
+        # Luma Ray2 — duration КАК СТРОКА (с 's')
         # ============================================================
         elif model == "luma":
             payload["user_prompt"] = prompt
@@ -502,13 +502,13 @@ class VideoProvider(AIProvider):
                 payload["image_end_url"] = kwargs["image_end_url"]
         
         # ============================================================
-        # Runway Gen-4
+        # Runway Gen-4 — duration КАК ЧИСЛО (int)
         # ============================================================
         elif model == "runway-gen4":
             payload["promptText"] = prompt
             del payload["prompt"]
             payload.update({
-                "duration": kwargs.get("duration", 5),
+                "duration": int(kwargs.get("duration", 5)),
                 "model": kwargs.get("model_type", "gen4_turbo"),
                 "ratio": kwargs.get("ratio", "1280:720")
             })
@@ -519,7 +519,7 @@ class VideoProvider(AIProvider):
         # НЕИЗВЕСТНАЯ МОДЕЛЬ
         # ============================================================
         else:
-            payload["duration"] = kwargs.get("duration", 5)
+            payload["duration"] = int(kwargs.get("duration", 5))
             logger.warning(f"⚠️ Неизвестная модель: {model}, используется базовый payload")
 
         payload = self._clean_payload(payload)
@@ -717,7 +717,10 @@ class VideoProvider(AIProvider):
                 metadata={"error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
             )
         except Exception as e:
-            logger.error(f"❌ Ошибка генерации видео: {e}")
+            import traceback
+            logger.error(f"❌ ОШИБКА: {e}")
+            logger.error(f"❌ ТИП: {type(e)}")
+            logger.error(f"❌ TRACEBACK: {traceback.format_exc()}")
             return AIResponse(
                 content="",
                 provider="genapi_video",

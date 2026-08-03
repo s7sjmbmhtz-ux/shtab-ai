@@ -4,7 +4,6 @@ import json
 import base64
 from typing import Optional, Dict, Any, List
 from abc import ABC, abstractmethod
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from settings import settings
 from models import (
@@ -21,54 +20,67 @@ class AIProvider(ABC):
 
 
 class TextProvider(AIProvider):
-    def __init__(self, client: httpx.AsyncClient):
-        self.client = client
+    def __init__(self):
         self.api_key = settings.GENAPI_API_KEY
         self.base_url = settings.GENAPI_BASE_URL
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
-    )
     async def _make_request(self, prompt: str, model: str, temperature: float) -> str:
-        # Проверка API-ключа
-        if not self.api_key or self.api_key == "":
+        if not self.api_key or self.api_key in ["", "None", "sk-"]:
             logger.error("❌ API-ключ пустой! Проверьте GENAPI_API_KEY в .env")
             raise ValueError("API-ключ не настроен")
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
+        
         payload = {
             "messages": [
                 {"role": "user", "content": prompt}
             ],
             "temperature": temperature
         }
-        
-        # Убираем None
         payload = {k: v for k, v in payload.items() if v is not None}
 
-        timeout = getattr(settings, 'AI_TIMEOUT', 120)
+        timeout = httpx.Timeout(
+            connect=30,
+            read=120,
+            write=30,
+            pool=30
+        )
 
-        # Исправляем URL
         base_url = self.base_url.rstrip('/')
         url = f"{base_url}/api/v1/networks/{model}"
-        logger.info(f"📤 TEXT API запрос: {url}")
-        logger.info(f"📤 Payload: {json.dumps(payload, ensure_ascii=False)}")
-
-        response = await self.client.post(
-            url,
-            headers=headers,
-            json=payload,
-            timeout=timeout
-        )
         
+        logger.info("=" * 60)
+        logger.info("📤 TEXT API ЗАПРОС")
+        logger.info(f"URL: {url}")
+        logger.info(f"Headers: Authorization: Bearer {self.api_key[:10]}...")
+        logger.info(f"Payload: {json.dumps(payload, ensure_ascii=False)}")
+        logger.info("=" * 60)
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=timeout,
+                http2=False,
+                follow_redirects=True
+            ) as client:
+                response = await client.post(
+                    url,
+                    headers=headers,
+                    json=payload
+                )
+        except Exception as e:
+            logger.error(f"❌ Ошибка при отправке запроса: {e}")
+            raise
+
         logger.info(f"📥 Ответ: статус {response.status_code}")
-        logger.info(f"📥 Тело: {response.text[:500]}")
-        response.raise_for_status()
+        logger.info(f"📥 Тело: {response.text[:1000]}")
+        
+        if response.status_code >= 400:
+            logger.error(f"❌ Ошибка API: {response.text[:500]}")
+            response.raise_for_status()
         
         data = response.json()
         
@@ -126,25 +138,21 @@ class TextProvider(AIProvider):
 
 
 class ImageProvider(AIProvider):
-    def __init__(self, client: httpx.AsyncClient):
-        self.client = client
+    def __init__(self):
         self.api_key = settings.GENAPI_API_KEY
         self.base_url = settings.GENAPI_BASE_URL
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=8),
-        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
-    )
     async def _make_request(self, prompt: str, size: str, model: str) -> Dict[str, Any]:
-        if not self.api_key or self.api_key == "":
+        if not self.api_key or self.api_key in ["", "None", "sk-"]:
             logger.error("❌ API-ключ пустой! Проверьте GENAPI_API_KEY в .env")
             raise ValueError("API-ключ не настроен")
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
+        
         payload = {
             "prompt": prompt,
             "size": size,
@@ -152,23 +160,45 @@ class ImageProvider(AIProvider):
         }
         payload = {k: v for k, v in payload.items() if v is not None}
 
-        timeout = getattr(settings, 'AI_TIMEOUT', 120)
+        timeout = httpx.Timeout(
+            connect=30,
+            read=120,
+            write=30,
+            pool=30
+        )
 
         base_url = self.base_url.rstrip('/')
         url = f"{base_url}/api/v1/networks/{model}"
-        logger.info(f"📤 IMAGE API запрос: {url}")
-        logger.info(f"📤 Payload: {json.dumps(payload, ensure_ascii=False)}")
-
-        response = await self.client.post(
-            url,
-            headers=headers,
-            json=payload,
-            timeout=timeout
-        )
         
+        logger.info("=" * 60)
+        logger.info("📤 IMAGE API ЗАПРОС")
+        logger.info(f"URL: {url}")
+        logger.info(f"Headers: Authorization: Bearer {self.api_key[:10]}...")
+        logger.info(f"Payload: {json.dumps(payload, ensure_ascii=False)}")
+        logger.info("=" * 60)
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=timeout,
+                http2=False,
+                follow_redirects=True
+            ) as client:
+                response = await client.post(
+                    url,
+                    headers=headers,
+                    json=payload
+                )
+        except Exception as e:
+            logger.error(f"❌ Ошибка при отправке запроса: {e}")
+            raise
+
         logger.info(f"📥 Ответ: статус {response.status_code}")
-        logger.info(f"📥 Тело: {response.text[:500]}")
-        response.raise_for_status()
+        logger.info(f"📥 Тело: {response.text[:1000]}")
+        
+        if response.status_code >= 400:
+            logger.error(f"❌ Ошибка API: {response.text[:500]}")
+            response.raise_for_status()
+        
         return response.json()
 
     async def generate(self, prompt: str, **kwargs) -> AIResponse:
@@ -238,14 +268,12 @@ class ImageProvider(AIProvider):
 
 
 class VideoProvider(AIProvider):
-    def __init__(self, client: httpx.AsyncClient):
-        self.client = client
+    def __init__(self):
         self.api_key = settings.GENAPI_API_KEY
         self.base_url = settings.GENAPI_BASE_URL
         self.max_wait_time = 600
 
     def _clean_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Убирает все None и пустые значения из payload."""
         cleaned = {}
         for k, v in payload.items():
             if v is None:
@@ -258,39 +286,47 @@ class VideoProvider(AIProvider):
                 cleaned[k] = v
         return cleaned
 
-    async def _get_endpoint(self, model: str) -> str:
-        """Получение правильного эндпоинта для модели."""
-        # Все модели используют один эндпоинт
-        return f"/api/v1/networks/{model}"
-
     async def _check_status(self, request_id: str) -> Dict[str, Any]:
-        """Проверка статуса видео по request_id."""
-        if not self.api_key or self.api_key == "":
+        if not self.api_key or self.api_key in ["", "None", "sk-"]:
             logger.error("❌ API-ключ пустой!")
             raise ValueError("API-ключ не настроен")
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
         
         base_url = self.base_url.rstrip('/')
         url = f"{base_url}/api/v1/request/get/{request_id}"
         logger.info(f"🔍 Проверка статуса: {url}")
         
-        response = await self.client.get(
-            url,
-            headers=headers,
-            timeout=30
-        )
+        timeout = httpx.Timeout(connect=30, read=30, write=30, pool=30)
+        
+        try:
+            async with httpx.AsyncClient(
+                timeout=timeout,
+                http2=False,
+                follow_redirects=True
+            ) as client:
+                response = await client.get(
+                    url,
+                    headers=headers
+                )
+        except Exception as e:
+            logger.error(f"❌ Ошибка при проверке статуса: {e}")
+            raise
         
         logger.info(f"📥 Статус ответа: {response.status_code}")
         logger.info(f"📥 Тело: {response.text[:500]}")
-        response.raise_for_status()
+        
+        if response.status_code >= 400:
+            logger.error(f"❌ Ошибка проверки статуса: {response.text[:500]}")
+            response.raise_for_status()
+        
         return response.json()
 
     async def _wait_for_video(self, request_id: str, timeout: int = 600) -> Optional[Dict[str, Any]]:
-        """Ожидание готовности видео с проверкой статуса."""
         start_time = asyncio.get_event_loop().time()
         check_interval = 5
         
@@ -318,13 +354,8 @@ class VideoProvider(AIProvider):
         logger.error(f"⏰ Таймаут ожидания видео ({timeout} сек)")
         return None
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError, asyncio.TimeoutError))
-    )
     async def _make_request(self, prompt: str, model: str, **kwargs) -> Dict[str, Any]:
-        if not self.api_key or self.api_key == "":
+        if not self.api_key or self.api_key in ["", "None", "sk-"]:
             logger.error("❌ API-ключ пустой! Проверьте GENAPI_API_KEY в .env")
             raise ValueError("API-ключ не настроен")
 
@@ -334,10 +365,9 @@ class VideoProvider(AIProvider):
             "Accept": "application/json"
         }
         
-        # ============================================================
-        # БАЗОВЫЙ PAYLOAD — ТОЛЬКО ПРОМТ!
-        # ============================================================
         payload = {
+            "callback_url": None,
+            "translate_input": True,
             "prompt": prompt
         }
         
@@ -383,10 +413,10 @@ class VideoProvider(AIProvider):
                 "shot_type": kwargs.get("shot_type", "customize"),
                 "keep_audio": kwargs.get("keep_audio", False)
             })
-            if kwargs.get("start_image_url"):
-                payload["start_image_url"] = kwargs.get("start_image_url")
-            if kwargs.get("end_image_url"):
-                payload["end_image_url"] = kwargs.get("end_image_url")
+            if "start_image_url" in kwargs:
+                payload["start_image_url"] = kwargs["start_image_url"]
+            if "end_image_url" in kwargs:
+                payload["end_image_url"] = kwargs["end_image_url"]
         
         # ============================================================
         # Kling Video V3
@@ -401,18 +431,23 @@ class VideoProvider(AIProvider):
                 "cfg_scale": kwargs.get("cfg_scale", 0.5),
                 "shot_type": kwargs.get("shot_type", "customize")
             })
-            if kwargs.get("start_image_url"):
-                payload["start_image_url"] = kwargs.get("start_image_url")
-            if kwargs.get("end_image_url"):
-                payload["end_image_url"] = kwargs.get("end_image_url")
+            if "start_image_url" in kwargs:
+                payload["start_image_url"] = kwargs["start_image_url"]
+            if "end_image_url" in kwargs:
+                payload["end_image_url"] = kwargs["end_image_url"]
         
         # ============================================================
         # Veo 3.1
         # ============================================================
         elif model == "veo-3.1":
+            if "image_urls" in kwargs and kwargs["image_urls"]:
+                mode = "img2video"
+            else:
+                mode = "txt2video"
+            
             payload.update({
                 "duration": f"{kwargs.get('duration', 5)}s",
-                "mode": kwargs.get("mode", "txt2video"),
+                "mode": mode,
                 "resolution": kwargs.get("resolution", "720p"),
                 "generate_audio": kwargs.get("generate_audio", True),
                 "aspect_ratio": kwargs.get("aspect_ratio", "16:9"),
@@ -420,12 +455,12 @@ class VideoProvider(AIProvider):
                 "fast": kwargs.get("fast", False),
                 "auto_fix": kwargs.get("auto_fix", True)
             })
-            if kwargs.get("negative_prompt"):
-                payload["negative_prompt"] = kwargs.get("negative_prompt")
-            if kwargs.get("seed"):
-                payload["seed"] = kwargs.get("seed")
-            if kwargs.get("image_urls"):
-                payload["image_urls"] = kwargs.get("image_urls")
+            if "negative_prompt" in kwargs:
+                payload["negative_prompt"] = kwargs["negative_prompt"]
+            if "seed" in kwargs:
+                payload["seed"] = kwargs["seed"]
+            if "image_urls" in kwargs:
+                payload["image_urls"] = kwargs["image_urls"]
         
         # ============================================================
         # Veo 3.1 Lite
@@ -438,14 +473,14 @@ class VideoProvider(AIProvider):
                 "generate_audio": kwargs.get("generate_audio", True),
                 "auto_fix": kwargs.get("auto_fix", True)
             })
-            if kwargs.get("negative_prompt"):
-                payload["negative_prompt"] = kwargs.get("negative_prompt")
-            if kwargs.get("seed"):
-                payload["seed"] = kwargs.get("seed")
-            if kwargs.get("image_url"):
-                payload["image_url"] = kwargs.get("image_url")
-            if kwargs.get("last_frame_url"):
-                payload["last_frame_url"] = kwargs.get("last_frame_url")
+            if "negative_prompt" in kwargs:
+                payload["negative_prompt"] = kwargs["negative_prompt"]
+            if "seed" in kwargs:
+                payload["seed"] = kwargs["seed"]
+            if "image_url" in kwargs:
+                payload["image_url"] = kwargs["image_url"]
+            if "last_frame_url" in kwargs:
+                payload["last_frame_url"] = kwargs["last_frame_url"]
         
         # ============================================================
         # Luma Ray2
@@ -461,10 +496,10 @@ class VideoProvider(AIProvider):
                 "resolution": kwargs.get("resolution", "720p"),
                 "model": kwargs.get("model_type", "ray-2-flash")
             })
-            if kwargs.get("image_url"):
-                payload["image_url"] = kwargs.get("image_url")
-            if kwargs.get("image_end_url"):
-                payload["image_end_url"] = kwargs.get("image_end_url")
+            if "image_url" in kwargs:
+                payload["image_url"] = kwargs["image_url"]
+            if "image_end_url" in kwargs:
+                payload["image_end_url"] = kwargs["image_end_url"]
         
         # ============================================================
         # Runway Gen-4
@@ -477,8 +512,8 @@ class VideoProvider(AIProvider):
                 "model": kwargs.get("model_type", "gen4_turbo"),
                 "ratio": kwargs.get("ratio", "1280:720")
             })
-            if kwargs.get("firstFrame"):
-                payload["firstFrame"] = kwargs.get("firstFrame")
+            if "firstFrame" in kwargs:
+                payload["firstFrame"] = kwargs["firstFrame"]
         
         # ============================================================
         # НЕИЗВЕСТНАЯ МОДЕЛЬ
@@ -487,29 +522,47 @@ class VideoProvider(AIProvider):
             payload["duration"] = kwargs.get("duration", 5)
             logger.warning(f"⚠️ Неизвестная модель: {model}, используется базовый payload")
 
-        # ============================================================
-        # УБИРАЕМ ВСЕ None ИЗ PAYLOAD
-        # ============================================================
         payload = self._clean_payload(payload)
 
-        timeout = getattr(settings, 'AI_TIMEOUT', 600)
+        timeout = httpx.Timeout(
+            connect=30,
+            read=600,
+            write=30,
+            pool=30
+        )
 
         base_url = self.base_url.rstrip('/')
-        endpoint = await self._get_endpoint(model)
-        url = f"{base_url}{endpoint}"
-        logger.info(f"📤 Video API запрос: {url}")
-        logger.info(f"📤 Payload: {json.dumps(payload, ensure_ascii=False)}")
-
-        response = await self.client.post(
-            url,
-            headers=headers,
-            json=payload,
-            timeout=timeout
-        )
+        url = f"{base_url}/api/v1/networks/{model}"
         
+        logger.info("=" * 60)
+        logger.info("📤 VIDEO API ЗАПРОС")
+        logger.info(f"URL: {url}")
+        logger.info(f"Headers: Authorization: Bearer {self.api_key[:10]}...")
+        logger.info(f"Payload: {json.dumps(payload, ensure_ascii=False)}")
+        logger.info("=" * 60)
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=timeout,
+                http2=False,
+                follow_redirects=True
+            ) as client:
+                response = await client.post(
+                    url,
+                    headers=headers,
+                    json=payload
+                )
+        except Exception as e:
+            logger.error(f"❌ Ошибка при отправке запроса: {e}")
+            raise
+
         logger.info(f"📥 Ответ: статус {response.status_code}")
-        logger.info(f"📥 Тело: {response.text[:500]}")
-        response.raise_for_status()
+        logger.info(f"📥 Тело: {response.text[:1000]}")
+        
+        if response.status_code >= 400:
+            logger.error(f"❌ Ошибка API: {response.text[:500]}")
+            response.raise_for_status()
+        
         return response.json()
 
     async def generate(self, prompt: str, **kwargs) -> AIResponse:
@@ -522,7 +575,6 @@ class VideoProvider(AIProvider):
             
             kwargs_copy = kwargs.copy()
             kwargs_copy.pop("model", None)
-            kwargs_copy.pop("duration", None)
             kwargs_copy.pop("size", None)
             
             result = await self._make_request(prompt=prompt, model=model, **kwargs_copy)
@@ -539,9 +591,6 @@ class VideoProvider(AIProvider):
                     response_type=ResponseType.VIDEO
                 )
 
-            # ============================================================
-            # АСИНХРОННАЯ ГЕНЕРАЦИЯ — ждём результат
-            # ============================================================
             request_id = result.get("request_id")
             if request_id:
                 logger.info(f"⏳ Видео генерируется, request_id: {request_id}")
@@ -568,7 +617,6 @@ class VideoProvider(AIProvider):
                         metadata={"error": f"Ошибка генерации: {final_result.get('error', 'Неизвестная ошибка')}"}
                     )
                 
-                # Извлекаем URL из результата
                 video_url = None
                 output = final_result.get("output")
                 
@@ -611,9 +659,6 @@ class VideoProvider(AIProvider):
                     metadata=response_data
                 )
             
-            # ============================================================
-            # СИНХРОННАЯ ГЕНЕРАЦИЯ — сразу есть URL
-            # ============================================================
             video_url = None
             
             if result.get("data") and isinstance(result["data"], list) and len(result["data"]) > 0:
@@ -684,8 +729,8 @@ class VideoProvider(AIProvider):
 
 
 class AudioProvider(AIProvider):
-    def __init__(self, client: httpx.AsyncClient):
-        self.client = client
+    def __init__(self):
+        pass
 
     async def generate(self, prompt: str = "", **kwargs) -> AIResponse:
         return AIResponse(
@@ -700,17 +745,11 @@ class AudioProvider(AIProvider):
 
 class AIService:
     def __init__(self):
-        timeout = getattr(settings, 'AI_TIMEOUT', 600)
-        self.client = httpx.AsyncClient(
-            timeout=timeout,
-            limits=httpx.Limits(max_keepalive_connections=10, max_connections=50),
-            http2=False  # ← Добавляем для совместимости
-        )
         self._providers = {
-            "text": TextProvider(self.client),
-            "image": ImageProvider(self.client),
-            "video": VideoProvider(self.client),
-            "audio": AudioProvider(self.client),
+            "text": TextProvider(),
+            "image": ImageProvider(),
+            "video": VideoProvider(),
+            "audio": AudioProvider(),
         }
 
     async def generate(
@@ -726,7 +765,7 @@ class AIService:
         return await provider.generate(prompt, **kwargs)
 
     async def close(self) -> None:
-        await self.client.aclose()
+        pass
 
 
 ai_service = AIService()

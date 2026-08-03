@@ -1612,8 +1612,10 @@ async def choose_video_model(message: types.Message, state: FSMContext):
         )
         return
 
+    # Ищем выбранную модель по тексту кнопки
     selected_model = None
     for key, model in VIDEO_MODELS.items():
+        # Сравниваем по названию модели
         if model["name"] in message.text:
             selected_model = {**model, "key": key}
             break

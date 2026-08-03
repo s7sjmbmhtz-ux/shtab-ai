@@ -3,7 +3,8 @@ import json
 from dotenv import load_dotenv
 
 load_dotenv()
-
+print(f"🔑 API Key from env: {os.getenv('GENAPI_API_KEY')}")
+print(f"🔑 Settings.GENAPI_API_KEY: {settings.GENAPI_API_KEY}")
 
 class Settings:
     # ============================================================

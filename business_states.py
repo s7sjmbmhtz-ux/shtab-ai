@@ -1,0 +1,15 @@
+from aiogram.fsm.state import State, StatesGroup
+
+
+class BusinessToolStates(StatesGroup):
+    collecting = State()
+
+
+class MarketplaceStates(StatesGroup):
+    choosing_source = State()
+    waiting_photo = State()
+    choosing_product_type = State()
+    waiting_product_name = State()
+    waiting_features = State()
+    choosing_style = State()
+    generating = State()

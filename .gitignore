@@ -45,3 +45,8 @@ Thumbs.db
 # Project specific
 ai_shtab.db
 ai_shtab.log
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc

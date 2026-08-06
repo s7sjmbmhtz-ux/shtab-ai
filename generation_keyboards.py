@@ -71,6 +71,31 @@ def get_text_models_keyboard() -> InlineKeyboardMarkup:
     return _models_keyboard(GenerationKind.TEXT, "newtext")
 
 
+def get_text_model_card_keyboard(model_key: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="▶️ Использовать",
+                    callback_data=f"text_use:{model_key}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⬅️ К списку моделей",
+                    callback_data="text_models_back",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="❌ Отмена",
+                    callback_data="generation_cancel",
+                )
+            ],
+        ]
+    )
+
+
 def get_image_mode_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -114,7 +139,7 @@ def get_image_model_card_keyboard(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="✅ Выбрать эту модель",
+                    text="▶️ Использовать",
                     callback_data=f"image_use:{mode}:{model_key}",
                 )
             ],
@@ -167,6 +192,31 @@ def get_cartoonify_strength_keyboard() -> InlineKeyboardMarkup:
 
 def get_video_models_keyboard() -> InlineKeyboardMarkup:
     return _models_keyboard(GenerationKind.VIDEO, "newvideo")
+
+
+def get_video_model_card_keyboard(model_key: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="▶️ Использовать",
+                    callback_data=f"video_use:{model_key}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⬅️ К списку моделей",
+                    callback_data="video_models_back",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="❌ Отмена",
+                    callback_data="generation_cancel",
+                )
+            ],
+        ]
+    )
 
 
 def get_video_duration_keyboard(model_key: str) -> InlineKeyboardMarkup:

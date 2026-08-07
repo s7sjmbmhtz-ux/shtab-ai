@@ -34,6 +34,7 @@ env/
 # Logs
 *.log
 logs/
+backups/
 
 # Docker
 *.pid
